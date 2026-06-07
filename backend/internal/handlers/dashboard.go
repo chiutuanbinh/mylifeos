@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/middleware"
@@ -16,8 +17,10 @@ func NewDashboardHandler(r repo.DashboardRepo) *DashboardHandler {
 
 func (h *DashboardHandler) Summary(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.GetUserID(r)
+	log.Printf("dashboard: summary request for uid=%q", uid)
 	summary, err := h.repo.Summary(r.Context(), uid)
 	if err != nil {
+		log.Printf("dashboard: summary error: %v", err)
 		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
 		return
 	}

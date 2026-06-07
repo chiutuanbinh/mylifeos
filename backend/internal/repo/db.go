@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -12,6 +13,7 @@ func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
 	// Use DATABASE_URL if set, otherwise build from individual vars.
 	// Individual vars avoid URL special-character encoding issues.
 	url := os.Getenv("DATABASE_URL")
+	log.Printf("db: DATABASE_URL set=%v DB_HOST=%q", url != "", os.Getenv("DB_HOST"))
 	if url == "" {
 		host := os.Getenv("DB_HOST")
 		port := os.Getenv("DB_PORT")
