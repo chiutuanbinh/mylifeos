@@ -1,0 +1,12 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy triggered
+        run: echo "Railway and Vercel auto-deploy from main. Check their dashboards."
