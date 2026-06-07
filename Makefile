@@ -4,7 +4,7 @@ dev:
 	docker compose up --build
 
 migrate:
-	docker compose run --rm migrate
+	docker compose --profile migrate run --rm migrate
 
 test: test-backend test-frontend
 
