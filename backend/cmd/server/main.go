@@ -1,15 +1,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
+
+	"github.com/chiutuanbinh/mylifeos/backend/internal/handlers"
+	"github.com/chiutuanbinh/mylifeos/backend/internal/middleware"
+	"github.com/chiutuanbinh/mylifeos/backend/internal/repo"
 )
 
 func main() {
@@ -20,9 +25,24 @@ func main() {
 		port = "8080"
 	}
 
+	db, err := repo.NewPool(context.Background())
+	if err != nil {
+		log.Fatalf("db connect: %v", err)
+	}
+	defer db.Close()
+
+	dashHandler    := handlers.NewDashboardHandler(repo.NewDashboardRepo(db))
+	txHandler      := handlers.NewTransactionHandler(repo.NewTransactionRepo(db))
+	habitHandler   := handlers.NewHabitHandler(repo.NewHabitRepo(db))
+	goalHandler    := handlers.NewGoalHandler(repo.NewGoalRepo(db))
+	noteHandler    := handlers.NewNoteHandler(repo.NewNoteRepo(db))
+	eventHandler   := handlers.NewEventHandler(repo.NewEventRepo(db))
+	assetHandler   := handlers.NewAssetHandler(repo.NewAssetRepo(db))
+	settingHandler := handlers.NewSettingsHandler(repo.NewSettingsRepo(db))
+
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	r.Use(chimw.Logger)
+	r.Use(chimw.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173", os.Getenv("FRONTEND_URL")},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -33,6 +53,49 @@ func main() {
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, `{"status":"ok"}`)
+	})
+
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(middleware.Auth)
+
+		r.Get("/dashboard/summary", dashHandler.Summary)
+
+		r.Get("/transactions",        txHandler.List)
+		r.Post("/transactions",        txHandler.Create)
+		r.Delete("/transactions/{id}", txHandler.Delete)
+		r.Get("/budgets",              txHandler.ListBudgets)
+		r.Put("/budgets/{category}",   txHandler.UpsertBudget)
+
+		r.Get("/habits",           habitHandler.List)
+		r.Post("/habits",           habitHandler.Create)
+		r.Delete("/habits/{id}",    habitHandler.Delete)
+		r.Get("/habits/logs",       habitHandler.GetLogs)
+		r.Post("/habits/{id}/log",  habitHandler.ToggleLog)
+
+		r.Get("/goals",                              goalHandler.List)
+		r.Post("/goals",                              goalHandler.Create)
+		r.Patch("/goals/{id}",                        goalHandler.Update)
+		r.Delete("/goals/{id}",                       goalHandler.Delete)
+		r.Post("/goals/{id}/key-results",             goalHandler.AddKeyResult)
+		r.Patch("/goals/{id}/key-results/{kr_id}",    goalHandler.UpdateKeyResult)
+
+		r.Get("/notes",          noteHandler.List)
+		r.Post("/notes",          noteHandler.Create)
+		r.Patch("/notes/{id}",    noteHandler.Update)
+		r.Delete("/notes/{id}",   noteHandler.Delete)
+
+		r.Get("/events",          eventHandler.List)
+		r.Post("/events",          eventHandler.Create)
+		r.Patch("/events/{id}",    eventHandler.Update)
+		r.Delete("/events/{id}",   eventHandler.Delete)
+
+		r.Get("/assets",          assetHandler.List)
+		r.Post("/assets",          assetHandler.Create)
+		r.Patch("/assets/{id}",    assetHandler.Update)
+		r.Delete("/assets/{id}",   assetHandler.Delete)
+
+		r.Get("/settings",  settingHandler.Get)
+		r.Put("/settings",  settingHandler.Update)
 	})
 
 	log.Printf("server listening on :%s", port)
