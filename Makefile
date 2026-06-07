@@ -1,4 +1,4 @@
-.PHONY: dev migrate test test-backend test-frontend build-backend
+.PHONY: dev migrate test test-backend test-frontend build-backend lint-backend lint-frontend
 
 dev:
 	docker compose up --build
