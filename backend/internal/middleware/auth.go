@@ -2,17 +2,43 @@ package middleware
 
 import (
 	"context"
-	"encoding/base64"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
+	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type ctxKey string
 
 const UserIDKey ctxKey = "userID"
+
+var (
+	jwksOnce  sync.Once
+	jwksKeyFunc jwt.Keyfunc
+	jwksErr   error
+)
+
+func getKeyFunc() (jwt.Keyfunc, error) {
+	jwksOnce.Do(func() {
+		supabaseURL := os.Getenv("SUPABASE_URL")
+		if supabaseURL == "" {
+			jwksErr = fmt.Errorf("SUPABASE_URL not set")
+			return
+		}
+		jwksURL := supabaseURL + "/auth/v1/.well-known/jwks.json"
+		k, err := keyfunc.NewDefault([]string{jwksURL})
+		if err != nil {
+			jwksErr = fmt.Errorf("jwks init: %w", err)
+			return
+		}
+		jwksKeyFunc = k.Keyfunc
+	})
+	return jwksKeyFunc, jwksErr
+}
 
 func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -32,20 +58,14 @@ func Auth(next http.Handler) http.Handler {
 			return
 		}
 		tokenStr := strings.TrimPrefix(header, "Bearer ")
-		secret := os.Getenv("SUPABASE_JWT_SECRET")
-		// Supabase signing key is base64-encoded; decode before verifying.
-		// Fall back to raw bytes if not valid base64 (e.g. plain string secrets).
-		keyBytes, err := base64.StdEncoding.DecodeString(secret)
+
+		keyFunc, err := getKeyFunc()
 		if err != nil {
-			keyBytes = []byte(secret)
+			http.Error(w, `{"error":"auth config error"}`, http.StatusInternalServerError)
+			return
 		}
 
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return keyBytes, nil
-		})
+		token, err := jwt.Parse(tokenStr, keyFunc)
 		if err != nil || !token.Valid {
 			http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
 			return
