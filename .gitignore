@@ -8,6 +8,8 @@
 # Go
 backend/bin/
 backend/tmp/
+backend/server
+backend/cmd/server/server
 
 # Node
 frontend/node_modules/
