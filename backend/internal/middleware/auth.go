@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/base64"
 	"net/http"
 	"os"
 	"strings"
@@ -32,12 +33,18 @@ func Auth(next http.Handler) http.Handler {
 		}
 		tokenStr := strings.TrimPrefix(header, "Bearer ")
 		secret := os.Getenv("SUPABASE_JWT_SECRET")
+		// Supabase signing key is base64-encoded; decode before verifying.
+		// Fall back to raw bytes if not valid base64 (e.g. plain string secrets).
+		keyBytes, err := base64.StdEncoding.DecodeString(secret)
+		if err != nil {
+			keyBytes = []byte(secret)
+		}
 
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrSignatureInvalid
 			}
-			return []byte(secret), nil
+			return keyBytes, nil
 		})
 		if err != nil || !token.Valid {
 			http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
