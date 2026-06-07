@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -17,27 +17,27 @@ type ctxKey string
 const UserIDKey ctxKey = "userID"
 
 var (
-	jwksOnce  sync.Once
+	jwksMu      sync.Mutex
 	jwksKeyFunc jwt.Keyfunc
-	jwksErr   error
 )
 
 func getKeyFunc() (jwt.Keyfunc, error) {
-	jwksOnce.Do(func() {
-		supabaseURL := os.Getenv("SUPABASE_URL")
-		if supabaseURL == "" {
-			jwksErr = fmt.Errorf("SUPABASE_URL not set")
-			return
-		}
-		jwksURL := supabaseURL + "/auth/v1/.well-known/jwks.json"
-		k, err := keyfunc.NewDefault([]string{jwksURL})
-		if err != nil {
-			jwksErr = fmt.Errorf("jwks init: %w", err)
-			return
-		}
-		jwksKeyFunc = k.Keyfunc
-	})
-	return jwksKeyFunc, jwksErr
+	jwksMu.Lock()
+	defer jwksMu.Unlock()
+	if jwksKeyFunc != nil {
+		return jwksKeyFunc, nil
+	}
+	supabaseURL := os.Getenv("SUPABASE_URL")
+	jwksURL := supabaseURL + "/auth/v1/.well-known/jwks.json"
+	log.Printf("auth: fetching JWKS from %s", jwksURL)
+	k, err := keyfunc.NewDefault([]string{jwksURL})
+	if err != nil {
+		log.Printf("auth: JWKS init error: %v", err)
+		return nil, err
+	}
+	log.Printf("auth: JWKS loaded successfully")
+	jwksKeyFunc = k.Keyfunc
+	return jwksKeyFunc, nil
 }
 
 func Auth(next http.Handler) http.Handler {
@@ -61,12 +61,14 @@ func Auth(next http.Handler) http.Handler {
 
 		keyFunc, err := getKeyFunc()
 		if err != nil {
+			log.Printf("auth: getKeyFunc error: %v", err)
 			http.Error(w, `{"error":"auth config error"}`, http.StatusInternalServerError)
 			return
 		}
 
 		token, err := jwt.Parse(tokenStr, keyFunc)
 		if err != nil || !token.Valid {
+			log.Printf("auth: token parse error: %v", err)
 			http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
 			return
 		}
