@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Row, Col, Card, Button, Modal, Form, Input, Switch, Spin, message, Tooltip } from 'antd'
+import { Row, Col, Card, Button, Modal, Form, Input, Switch, Spin, Tooltip } from 'antd'
 import { PlusOutlined, DeleteOutlined, LeftOutlined, RightOutlined, SyncOutlined } from '@ant-design/icons'
 import { getEvents, createEvent, deleteEvent, syncGoogleCalendar } from '../api/endpoints'
 import { supabase } from '../store/auth'
@@ -11,6 +11,7 @@ export function CalendarPage() {
   const [month, setMonth] = useState(todayDate.getMonth())
   const [selectedDay, setSelectedDay] = useState(todayDate.getDate())
   const [addOpen, setAddOpen] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [form] = Form.useForm()
   const qc = useQueryClient()
 
@@ -21,6 +22,33 @@ export function CalendarPage() {
     queryKey: ['events', year, month],
     queryFn: () => getEvents({ from: fromDate, to: toDate }),
   })
+
+  // Track synced months so we don't re-sync on every render
+  const syncedRef = useRef(new Set<string>())
+
+  const syncGoogle = useCallback(async (from: string, to: string, manual = false) => {
+    if (!supabase) return
+    const key = `${from}/${to}`
+    if (!manual && syncedRef.current.has(key)) return
+    setSyncing(true)
+    try {
+      const { data } = await supabase.auth.getSession()
+      const providerToken = data.session?.provider_token
+      if (!providerToken) return // no calendar scope — skip silently
+      const result = await syncGoogleCalendar(providerToken, from, to)
+      if (!result.error && result.synced > 0) {
+        qc.invalidateQueries({ queryKey: ['events'] })
+      }
+      syncedRef.current.add(key)
+    } finally {
+      setSyncing(false)
+    }
+  }, [qc])
+
+  // Auto-sync whenever month changes
+  useEffect(() => {
+    syncGoogle(fromDate, toDate)
+  }, [fromDate, toDate, syncGoogle])
 
   const addMutation = useMutation({
     mutationFn: (values: any) => createEvent({
@@ -37,31 +65,6 @@ export function CalendarPage() {
     mutationFn: deleteEvent,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }),
   })
-
-  const [syncing, setSyncing] = useState(false)
-  const onSyncGoogle = async () => {
-    if (!supabase) return
-    setSyncing(true)
-    try {
-      const { data } = await supabase.auth.getSession()
-      const providerToken = data.session?.provider_token
-      if (!providerToken) {
-        message.error('No Google access token. Sign out and sign in again to grant calendar access.')
-        return
-      }
-      const result = await syncGoogleCalendar(providerToken, fromDate, toDate)
-      if (result.error) {
-        message.error(result.error)
-      } else {
-        message.success(`Synced ${result.synced} events from Google Calendar`)
-        qc.invalidateQueries({ queryKey: ['events'] })
-      }
-    } catch {
-      message.error('Google Calendar sync failed')
-    } finally {
-      setSyncing(false)
-    }
-  }
 
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const firstDayOfWeek = new Date(year, month, 1).getDay()
@@ -82,6 +85,11 @@ export function CalendarPage() {
   const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y - 1) } else setMonth(m => m - 1) }
   const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y + 1) } else setMonth(m => m + 1) }
 
+  const onManualSync = () => {
+    syncedRef.current.delete(`${fromDate}/${toDate}`)
+    syncGoogle(fromDate, toDate, true)
+  }
+
   return (
     <div>
       <Row gutter={[12, 12]}>
@@ -91,13 +99,12 @@ export function CalendarPage() {
               <Button type="text" size="small" icon={<LeftOutlined />} onClick={prevMonth} />
               <span style={{ fontSize: 14, fontWeight: 600 }}>{monthName} {year}</span>
               <Button type="text" size="small" icon={<RightOutlined />} onClick={nextMonth} />
+              {syncing && <SyncOutlined spin style={{ fontSize: 12, color: '#1677ff' }} />}
             </div>
           } extra={
             <div style={{ display: 'flex', gap: 6 }}>
-              <Tooltip title="Import from Google Calendar">
-                <Button size="small" icon={<SyncOutlined spin={syncing} />} onClick={onSyncGoogle} loading={syncing}>
-                  Sync GCal
-                </Button>
+              <Tooltip title="Re-sync from Google Calendar">
+                <Button size="small" icon={<SyncOutlined />} onClick={onManualSync} loading={syncing} />
               </Tooltip>
               <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>Add</Button>
             </div>
@@ -137,7 +144,9 @@ export function CalendarPage() {
                   <div style={{ fontSize: 12, fontWeight: 500 }}>{e.title}</div>
                   <div style={{ fontSize: 11, color: '#bbb' }}>{e.all_day ? 'All day' : new Date(e.start_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
-                <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => deleteMutation.mutate(e.id)} />
+                {!e.google_event_id && (
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => deleteMutation.mutate(e.id)} />
+                )}
               </div>
             ))}
           </Card>
