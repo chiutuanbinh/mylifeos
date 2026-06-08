@@ -3,6 +3,7 @@ import { ConfigProvider } from 'antd'
 import { useAuthStore } from './store/auth'
 import { AppShell } from './components/AppShell'
 import { LoginPage } from './pages/LoginPage'
+import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { FinancePage } from './pages/FinancePage'
 import { HealthPage } from './pages/HealthPage'
@@ -23,6 +24,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/*" element={
             <PrivateRoute>
               <AppShell>

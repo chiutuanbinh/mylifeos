@@ -12,6 +12,8 @@ interface AuthState {
   token: string | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
+  setSession: (token: string) => void
   signOut: () => Promise<void>
 }
 
@@ -33,6 +35,20 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ loading: false })
     }
   },
+
+  signInWithGoogle: async () => {
+    if (!supabase) {
+      set({ token: 'local-dev-token' })
+      return
+    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+    if (error) throw error
+  },
+
+  setSession: (token) => set({ token }),
 
   signOut: async () => {
     if (supabase) await supabase.auth.signOut()
