@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Row, Col, Card, Button, Modal, Form, Input, Switch, Spin, Tooltip } from 'antd'
+import { Row, Col, Card, Button, Modal, Form, Input, Switch, Spin, Tooltip, message } from 'antd'
 import { PlusOutlined, DeleteOutlined, LeftOutlined, RightOutlined, SyncOutlined } from '@ant-design/icons'
 import { getEvents, createEvent, deleteEvent, syncGoogleCalendar } from '../api/endpoints'
 import { supabase } from '../store/auth'
@@ -34,12 +34,20 @@ export function CalendarPage() {
     try {
       const { data } = await supabase.auth.getSession()
       const providerToken = data.session?.provider_token
-      if (!providerToken) return // no calendar scope — skip silently
+      if (!providerToken) {
+        if (manual) message.warning('No Google access token — sign out and sign in again to grant calendar access.')
+        return
+      }
       const result = await syncGoogleCalendar(providerToken, from, to)
-      if (!result.error && result.synced > 0) {
+      if (result.error) {
+        if (manual) message.error(`Sync failed: ${result.error}`)
+      } else {
         qc.invalidateQueries({ queryKey: ['events'] })
+        if (manual) message.success(`Synced ${result.synced} events from Google Calendar`)
       }
       syncedRef.current.add(key)
+    } catch (e: any) {
+      if (manual) message.error(`Sync failed: ${e?.message ?? 'unknown error'}`)
     } finally {
       setSyncing(false)
     }
