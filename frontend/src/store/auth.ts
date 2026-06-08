@@ -8,6 +8,17 @@ export const supabase = supabaseUrl
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null
 
+// Restore session from Supabase on page load, keep in sync on token refresh.
+if (supabase) {
+  supabase.auth.getSession().then(({ data }) => {
+    const token = data.session?.access_token
+    if (token) useAuthStore.setState({ token })
+  })
+  supabase.auth.onAuthStateChange((_event, session) => {
+    useAuthStore.setState({ token: session?.access_token ?? null })
+  })
+}
+
 interface AuthState {
   token: string | null
   loading: boolean
