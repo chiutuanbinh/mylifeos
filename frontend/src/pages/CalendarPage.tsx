@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Row, Col, Card, Button, Modal, Form, Input, Switch, Spin } from 'antd'
-import { PlusOutlined, DeleteOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
-import { getEvents, createEvent, deleteEvent } from '../api/endpoints'
+import { Row, Col, Card, Button, Modal, Form, Input, Switch, Spin, message, Tooltip } from 'antd'
+import { PlusOutlined, DeleteOutlined, LeftOutlined, RightOutlined, SyncOutlined } from '@ant-design/icons'
+import { getEvents, createEvent, deleteEvent, syncGoogleCalendar } from '../api/endpoints'
+import { supabase } from '../store/auth'
 
 export function CalendarPage() {
   const todayDate = new Date()
@@ -37,6 +38,31 @@ export function CalendarPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }),
   })
 
+  const [syncing, setSyncing] = useState(false)
+  const onSyncGoogle = async () => {
+    if (!supabase) return
+    setSyncing(true)
+    try {
+      const { data } = await supabase.auth.getSession()
+      const providerToken = data.session?.provider_token
+      if (!providerToken) {
+        message.error('No Google access token. Sign out and sign in again to grant calendar access.')
+        return
+      }
+      const result = await syncGoogleCalendar(providerToken, fromDate, toDate)
+      if (result.error) {
+        message.error(result.error)
+      } else {
+        message.success(`Synced ${result.synced} events from Google Calendar`)
+        qc.invalidateQueries({ queryKey: ['events'] })
+      }
+    } catch {
+      message.error('Google Calendar sync failed')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const firstDayOfWeek = new Date(year, month, 1).getDay()
   const monthName = new Date(year, month).toLocaleString('default', { month: 'long' })
@@ -66,7 +92,16 @@ export function CalendarPage() {
               <span style={{ fontSize: 14, fontWeight: 600 }}>{monthName} {year}</span>
               <Button type="text" size="small" icon={<RightOutlined />} onClick={nextMonth} />
             </div>
-          } extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>Add</Button>}>
+          } extra={
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Tooltip title="Import from Google Calendar">
+                <Button size="small" icon={<SyncOutlined spin={syncing} />} onClick={onSyncGoogle} loading={syncing}>
+                  Sync GCal
+                </Button>
+              </Tooltip>
+              <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>Add</Button>
+            </div>
+          }>
             {isLoading ? <Spin /> : (
               <div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, marginBottom: 4 }}>

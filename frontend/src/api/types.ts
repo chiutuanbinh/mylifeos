@@ -71,6 +71,7 @@ export interface Event {
   end_at: string
   color: string
   all_day: boolean
+  google_event_id?: string
 }
 
 export interface Asset {

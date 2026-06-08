@@ -36,7 +36,9 @@ func main() {
 	habitHandler   := handlers.NewHabitHandler(repo.NewHabitRepo(db))
 	goalHandler    := handlers.NewGoalHandler(repo.NewGoalRepo(db))
 	noteHandler    := handlers.NewNoteHandler(repo.NewNoteRepo(db))
-	eventHandler   := handlers.NewEventHandler(repo.NewEventRepo(db))
+	eventRepo      := repo.NewEventRepo(db)
+	eventHandler   := handlers.NewEventHandler(eventRepo)
+	gcalHandler    := handlers.NewGoogleCalendarHandler(eventRepo)
 	assetHandler   := handlers.NewAssetHandler(repo.NewAssetRepo(db))
 	settingHandler := handlers.NewSettingsHandler(repo.NewSettingsRepo(db))
 
@@ -84,10 +86,11 @@ func main() {
 		r.Patch("/notes/{id}",    noteHandler.Update)
 		r.Delete("/notes/{id}",   noteHandler.Delete)
 
-		r.Get("/events",          eventHandler.List)
-		r.Post("/events",          eventHandler.Create)
-		r.Patch("/events/{id}",    eventHandler.Update)
-		r.Delete("/events/{id}",   eventHandler.Delete)
+		r.Get("/events",                    eventHandler.List)
+		r.Post("/events",                    eventHandler.Create)
+		r.Patch("/events/{id}",              eventHandler.Update)
+		r.Delete("/events/{id}",             eventHandler.Delete)
+		r.Post("/calendar/google/sync",      gcalHandler.Sync)
 
 		r.Get("/assets",          assetHandler.List)
 		r.Post("/assets",          assetHandler.Create)

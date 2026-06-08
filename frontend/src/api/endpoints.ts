@@ -60,6 +60,12 @@ export const updateEvent = (id: string, data: Partial<Event>) =>
   apiClient.patch<Event>(`/events/${id}`, data).then(r => r.data)
 export const deleteEvent = (id: string) =>
   apiClient.delete(`/events/${id}`)
+export const syncGoogleCalendar = (providerToken: string, timeMin?: string, timeMax?: string) =>
+  apiClient.post<{ synced: number; error?: string }>('/calendar/google/sync', {
+    provider_token: providerToken,
+    time_min: timeMin,
+    time_max: timeMax,
+  }).then(r => r.data)
 
 export const getAssets = () =>
   apiClient.get<Asset[]>('/assets').then(r => r.data)
