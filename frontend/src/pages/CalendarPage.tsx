@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Row, Col, Card, Button, Modal, Form, Input, Switch, Spin, Tooltip, message } from 'antd'
 import { PlusOutlined, DeleteOutlined, LeftOutlined, RightOutlined, SyncOutlined } from '@ant-design/icons'
 import { getEvents, createEvent, deleteEvent, syncGoogleCalendar } from '../api/endpoints'
-import { supabase } from '../store/auth'
+import { supabase, getStoredProviderToken } from '../store/auth'
 
 export function CalendarPage() {
   const todayDate = new Date()
@@ -32,10 +32,9 @@ export function CalendarPage() {
     if (!manual && syncedRef.current.has(key)) return
     setSyncing(true)
     try {
-      const { data } = await supabase.auth.getSession()
-      const providerToken = data.session?.provider_token
+      const providerToken = getStoredProviderToken()
       if (!providerToken) {
-        if (manual) message.warning('No Google access token — sign out and sign in again to grant calendar access.')
+        if (manual) message.warning('Google Calendar access expired — sign out and sign in again to re-grant access.')
         return
       }
       const result = await syncGoogleCalendar(providerToken, from, to)

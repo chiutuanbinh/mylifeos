@@ -8,14 +8,36 @@ export const supabase = supabaseUrl
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null
 
+const PROVIDER_TOKEN_KEY = 'gcal_provider_token'
+
+export function getStoredProviderToken(): string | null {
+  try {
+    const raw = localStorage.getItem(PROVIDER_TOKEN_KEY)
+    if (!raw) return null
+    const { token, expiresAt } = JSON.parse(raw)
+    if (Date.now() > expiresAt) { localStorage.removeItem(PROVIDER_TOKEN_KEY); return null }
+    return token
+  } catch { return null }
+}
+
 // Restore session from Supabase on page load, keep in sync on token refresh.
 if (supabase) {
   supabase.auth.getSession().then(({ data }) => {
     const token = data.session?.access_token
     if (token) useAuthStore.setState({ token })
   })
-  supabase.auth.onAuthStateChange((_event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
     useAuthStore.setState({ token: session?.access_token ?? null })
+    if (event === 'SIGNED_IN' && session?.provider_token) {
+      // Google access tokens last ~1 hour
+      localStorage.setItem(PROVIDER_TOKEN_KEY, JSON.stringify({
+        token: session.provider_token,
+        expiresAt: Date.now() + 55 * 60 * 1000,
+      }))
+    }
+    if (event === 'SIGNED_OUT') {
+      localStorage.removeItem(PROVIDER_TOKEN_KEY)
+    }
   })
 }
 
