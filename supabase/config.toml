@@ -1,5 +1,6 @@
 [project]
 # Find your project ref in: Supabase Dashboard → Settings → General
+# Set via SUPABASE_PROJECT_REF secret in GitHub Actions / supabase link locally
 id = "xvwpvhbiiwhdeimxxgxg"
 
 [db]
