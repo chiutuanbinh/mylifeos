@@ -1,8 +1,36 @@
-[project]
-# Find your project ref in: Supabase Dashboard → Settings → General
-# Set via SUPABASE_PROJECT_REF secret in GitHub Actions / supabase link locally
-id = "xvwpvhbiiwhdeimxxgxg"
+# Supabase project config.
+# project_id is used by the CLI to identify the project when running supabase link.
+project_id = "mylifeos"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
 
 [db]
-# Major version of Postgres used by the project.
+port = 54322
+shadow_port = 54320
 major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173/auth/callback"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.external.google]
+enabled = true
