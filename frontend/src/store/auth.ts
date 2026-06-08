@@ -78,7 +78,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        scopes: 'https://www.googleapis.com/auth/calendar.readonly',
+        scopes: 'email profile https://www.googleapis.com/auth/calendar.readonly',
       },
     })
     if (error) throw error
