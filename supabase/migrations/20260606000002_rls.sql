@@ -11,6 +11,17 @@ ALTER TABLE assets          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings   ENABLE ROW LEVEL SECURITY;
 
 -- Policies: users only see their own rows
+DROP POLICY IF EXISTS transactions_user  ON transactions;
+DROP POLICY IF EXISTS budgets_user       ON budgets;
+DROP POLICY IF EXISTS habits_user        ON habits;
+DROP POLICY IF EXISTS habit_logs_user    ON habit_logs;
+DROP POLICY IF EXISTS goals_user         ON goals;
+DROP POLICY IF EXISTS key_results_user   ON key_results;
+DROP POLICY IF EXISTS notes_user         ON notes;
+DROP POLICY IF EXISTS events_user        ON events;
+DROP POLICY IF EXISTS assets_user        ON assets;
+DROP POLICY IF EXISTS user_settings_user ON user_settings;
+
 CREATE POLICY transactions_user    ON transactions    USING (user_id = auth.uid());
 CREATE POLICY budgets_user         ON budgets         USING (user_id = auth.uid());
 CREATE POLICY habits_user          ON habits          USING (user_id = auth.uid());
