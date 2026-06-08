@@ -14,6 +14,7 @@ import (
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/handlers"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/middleware"
+	"github.com/chiutuanbinh/mylifeos/backend/internal/migrate"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/repo"
 )
 
@@ -30,6 +31,10 @@ func main() {
 		log.Fatalf("db connect: %v", err)
 	}
 	defer db.Close()
+
+	if err := migrate.Run(context.Background(), db); err != nil {
+		log.Fatalf("migrations: %v", err)
+	}
 
 	dashHandler    := handlers.NewDashboardHandler(repo.NewDashboardRepo(db))
 	txHandler      := handlers.NewTransactionHandler(repo.NewTransactionRepo(db))
