@@ -1,0 +1,7 @@
+[project]
+# Find your project ref in: Supabase Dashboard → Settings → General
+id = "xvwpvhbiiwhdeimxxgxg"
+
+[db]
+# Major version of Postgres used by the project.
+major_version = 15

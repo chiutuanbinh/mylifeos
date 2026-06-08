@@ -32,8 +32,12 @@ func main() {
 	}
 	defer db.Close()
 
-	if err := migrate.Run(context.Background(), db); err != nil {
-		log.Fatalf("migrations: %v", err)
+	// SELF_HOSTED=true: run embedded migrations directly (bypasses Supabase CLI).
+	// Leave unset when deploying via Supabase (migrations run in CI via supabase db push).
+	if os.Getenv("SELF_HOSTED") == "true" {
+		if err := migrate.Run(context.Background()); err != nil {
+			log.Fatalf("migrations: %v", err)
+		}
 	}
 
 	dashHandler    := handlers.NewDashboardHandler(repo.NewDashboardRepo(db))
