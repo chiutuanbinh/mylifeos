@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -39,6 +40,7 @@ func (h *TransactionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	t.UserID = uid
 	out, err := h.repo.Create(r.Context(), t)
 	if err != nil {
+		log.Printf("transactions.Create: %v", err)
 		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
 		return
 	}

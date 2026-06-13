@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -69,7 +70,9 @@ func (r *pgHabitRepo) GetLogs(ctx context.Context, userID, date string) ([]model
 	var out []models.HabitLog
 	for rows.Next() {
 		var l models.HabitLog
-		rows.Scan(&l.ID, &l.HabitID, &l.UserID, &l.LoggedDate, &l.Done)
+		var loggedDate time.Time
+		rows.Scan(&l.ID, &l.HabitID, &l.UserID, &loggedDate, &l.Done)
+		l.LoggedDate = loggedDate.Format("2006-01-02")
 		out = append(out, l)
 	}
 	if out == nil {
@@ -90,6 +93,8 @@ func (r *pgHabitRepo) ToggleLog(ctx context.Context, habitID, userID, date strin
 		 RETURNING id, habit_id, user_id, logged_date, done`,
 		habitID, userID, date)
 	var out models.HabitLog
-	err := row.Scan(&out.ID, &out.HabitID, &out.UserID, &out.LoggedDate, &out.Done)
+	var loggedDate time.Time
+	err := row.Scan(&out.ID, &out.HabitID, &out.UserID, &loggedDate, &out.Done)
+	out.LoggedDate = loggedDate.Format("2006-01-02")
 	return out, err
 }
