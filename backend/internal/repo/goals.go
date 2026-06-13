@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,6 +15,14 @@ type GoalRepo interface {
 	Delete(ctx context.Context, id, userID string) error
 	AddKeyResult(ctx context.Context, kr models.KeyResult) (models.KeyResult, error)
 	UpdateKeyResult(ctx context.Context, kr models.KeyResult) (models.KeyResult, error)
+}
+
+func nullDateString(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.Format("2006-01-02")
+	return &s
 }
 
 type pgGoalRepo struct{ db *pgxpool.Pool }
@@ -31,7 +40,9 @@ func (r *pgGoalRepo) List(ctx context.Context, userID string) ([]models.Goal, er
 	var goals []models.Goal
 	for rows.Next() {
 		var g models.Goal
-		rows.Scan(&g.ID, &g.UserID, &g.Name, &g.Description, &g.TargetDate, &g.Progress, &g.Color, &g.CreatedAt)
+		var targetDate *time.Time
+		rows.Scan(&g.ID, &g.UserID, &g.Name, &g.Description, &targetDate, &g.Progress, &g.Color, &g.CreatedAt)
+		g.TargetDate = nullDateString(targetDate)
 		goals = append(goals, g)
 	}
 	if goals == nil {
@@ -69,7 +80,9 @@ func (r *pgGoalRepo) Create(ctx context.Context, g models.Goal) (models.Goal, er
 		 RETURNING id, user_id, name, description, target_date, progress, color, created_at`,
 		g.UserID, g.Name, g.Description, g.TargetDate, g.Progress, g.Color)
 	var out models.Goal
-	err := row.Scan(&out.ID, &out.UserID, &out.Name, &out.Description, &out.TargetDate, &out.Progress, &out.Color, &out.CreatedAt)
+	var targetDate *time.Time
+	err := row.Scan(&out.ID, &out.UserID, &out.Name, &out.Description, &targetDate, &out.Progress, &out.Color, &out.CreatedAt)
+	out.TargetDate = nullDateString(targetDate)
 	out.KeyResults = []models.KeyResult{}
 	return out, err
 }
@@ -81,7 +94,9 @@ func (r *pgGoalRepo) Update(ctx context.Context, g models.Goal) (models.Goal, er
 		 RETURNING id, user_id, name, description, target_date, progress, color, created_at`,
 		g.Name, g.Description, g.TargetDate, g.Progress, g.Color, g.ID, g.UserID)
 	var out models.Goal
-	err := row.Scan(&out.ID, &out.UserID, &out.Name, &out.Description, &out.TargetDate, &out.Progress, &out.Color, &out.CreatedAt)
+	var targetDate *time.Time
+	err := row.Scan(&out.ID, &out.UserID, &out.Name, &out.Description, &targetDate, &out.Progress, &out.Color, &out.CreatedAt)
+	out.TargetDate = nullDateString(targetDate)
 	return out, err
 }
 

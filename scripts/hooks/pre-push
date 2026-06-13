@@ -45,6 +45,11 @@ cd ../frontend
 npm run lint --silent && npm run build --silent
 echo "✓ Frontend OK"
 
+echo "→ Running integration smoke tests (agent-browser)..."
+cd ..
+bash scripts/integration-test.sh
+echo "✓ Integration tests passed"
+
 echo ""
 echo "✓ All checks passed — pushing to $REMOTE ($BRANCH)"
 echo ""

@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -29,7 +30,9 @@ func (r *pgAssetRepo) List(ctx context.Context, userID string) ([]models.Asset, 
 	var out []models.Asset
 	for rows.Next() {
 		var a models.Asset
-		rows.Scan(&a.ID, &a.UserID, &a.Name, &a.Category, &a.Value, &a.PurchasedAt, &a.Notes)
+		var purchasedAt *time.Time
+		rows.Scan(&a.ID, &a.UserID, &a.Name, &a.Category, &a.Value, &purchasedAt, &a.Notes)
+		a.PurchasedAt = nullDateString(purchasedAt)
 		out = append(out, a)
 	}
 	if out == nil {
@@ -45,7 +48,9 @@ func (r *pgAssetRepo) Create(ctx context.Context, a models.Asset) (models.Asset,
 		 RETURNING id, user_id, name, category, value, purchased_at, notes`,
 		a.UserID, a.Name, a.Category, a.Value, a.PurchasedAt, a.Notes)
 	var out models.Asset
-	err := row.Scan(&out.ID, &out.UserID, &out.Name, &out.Category, &out.Value, &out.PurchasedAt, &out.Notes)
+	var purchasedAt *time.Time
+	err := row.Scan(&out.ID, &out.UserID, &out.Name, &out.Category, &out.Value, &purchasedAt, &out.Notes)
+	out.PurchasedAt = nullDateString(purchasedAt)
 	return out, err
 }
 
@@ -56,7 +61,9 @@ func (r *pgAssetRepo) Update(ctx context.Context, a models.Asset) (models.Asset,
 		 RETURNING id, user_id, name, category, value, purchased_at, notes`,
 		a.Name, a.Category, a.Value, a.PurchasedAt, a.Notes, a.ID, a.UserID)
 	var out models.Asset
-	err := row.Scan(&out.ID, &out.UserID, &out.Name, &out.Category, &out.Value, &out.PurchasedAt, &out.Notes)
+	var purchasedAt *time.Time
+	err := row.Scan(&out.ID, &out.UserID, &out.Name, &out.Category, &out.Value, &purchasedAt, &out.Notes)
+	out.PurchasedAt = nullDateString(purchasedAt)
 	return out, err
 }
 

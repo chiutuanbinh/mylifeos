@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -40,7 +41,9 @@ func (r *pgTransactionRepo) List(ctx context.Context, userID, category, from, to
 	var out []models.Transaction
 	for rows.Next() {
 		var t models.Transaction
-		rows.Scan(&t.ID, &t.UserID, &t.Date, &t.Description, &t.Category, &t.Amount, &t.CreatedAt)
+		var date time.Time
+		rows.Scan(&t.ID, &t.UserID, &date, &t.Description, &t.Category, &t.Amount, &t.CreatedAt)
+		t.Date = date.Format("2006-01-02")
 		out = append(out, t)
 	}
 	if out == nil {
@@ -56,7 +59,9 @@ func (r *pgTransactionRepo) Create(ctx context.Context, t models.Transaction) (m
 		 RETURNING id, user_id, date, description, category, amount, created_at`,
 		t.UserID, t.Date, t.Description, t.Category, t.Amount)
 	var out models.Transaction
-	err := row.Scan(&out.ID, &out.UserID, &out.Date, &out.Description, &out.Category, &out.Amount, &out.CreatedAt)
+	var date time.Time
+	err := row.Scan(&out.ID, &out.UserID, &date, &out.Description, &out.Category, &out.Amount, &out.CreatedAt)
+	out.Date = date.Format("2006-01-02")
 	return out, err
 }
 
