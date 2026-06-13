@@ -44,7 +44,7 @@ export function GoalsPage() {
             >
               <Progress percent={g.progress} strokeColor={g.color} size="small" style={{ marginBottom: 10 }} />
               {g.description && <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>{g.description}</div>}
-              {g.key_results.map(kr => (
+              {(g.key_results ?? []).map(kr => (
                 <div key={kr.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <Checkbox
                     checked={kr.done}
