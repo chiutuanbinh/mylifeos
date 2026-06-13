@@ -57,8 +57,8 @@ export function CalendarPage() {
         if (manual) message.success(`Synced ${result.synced} events from Google Calendar`)
       }
       syncedRef.current.add(key)
-    } catch (e: any) {
-      if (manual) message.error(`Sync failed: ${e?.message ?? 'unknown error'}`)
+    } catch (e: unknown) {
+      if (manual) message.error(`Sync failed: ${e instanceof Error ? e.message : 'unknown error'}`)
     } finally {
       setSyncing(false)
     }
@@ -70,7 +70,7 @@ export function CalendarPage() {
   }, [fromDate, toDate, syncGoogle])
 
   const addMutation = useMutation({
-    mutationFn: (values: any) => createEvent({
+    mutationFn: (values: Record<string, string>) => createEvent({
       title: values.title,
       start_at: new Date(`${values.date}T${values.start_time || '09:00'}`).toISOString(),
       end_at: new Date(`${values.date}T${values.end_time || '10:00'}`).toISOString(),

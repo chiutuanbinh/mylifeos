@@ -16,7 +16,7 @@ export function NotesPage() {
   })
 
   const addMutation = useMutation({
-    mutationFn: (values: any) => createNote({ ...values, tags: values.tags ? values.tags.split(',').map((t: string) => t.trim()) : [] }),
+    mutationFn: (values: Record<string, string>) => createNote({ ...values, tags: values.tags ? values.tags.split(',').map((t: string) => t.trim()) : [] }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['notes'] }); setAddOpen(false); form.resetFields() },
   })
 
