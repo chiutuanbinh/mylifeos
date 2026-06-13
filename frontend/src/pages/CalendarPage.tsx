@@ -32,7 +32,19 @@ export function CalendarPage() {
     if (!manual && syncedRef.current.has(key)) return
     setSyncing(true)
     try {
-      const providerToken = getStoredProviderToken()
+      // Prefer stored token; fall back to live session (covers the first load
+      // race where onAuthStateChange hasn't fired yet to persist the token).
+      let providerToken = getStoredProviderToken()
+      if (!providerToken) {
+        const { data } = await supabase.auth.getSession()
+        providerToken = data.session?.provider_token ?? null
+        if (providerToken) {
+          localStorage.setItem('gcal_provider_token', JSON.stringify({
+            token: providerToken,
+            expiresAt: Date.now() + 55 * 60 * 1000,
+          }))
+        }
+      }
       if (!providerToken) {
         if (manual) message.warning('Google Calendar access expired — sign out and sign in again to re-grant access.')
         return
