@@ -17,7 +17,7 @@ import (
 type mockGoalRepo struct{}
 
 func (m *mockGoalRepo) List(_ context.Context, _ string) ([]models.Goal, error) {
-	return []models.Goal{{ID: "g-1", Name: "Fitness", Color: "#1677ff"}}, nil
+	return []models.Goal{{ID: "g-1", Name: "Fitness", Color: "#1677ff", Status: "active"}}, nil
 }
 func (m *mockGoalRepo) Create(_ context.Context, g models.Goal) (models.Goal, error) {
 	g.ID = "g-new"
@@ -32,6 +32,7 @@ func (m *mockGoalRepo) AddKeyResult(_ context.Context, kr models.KeyResult) (mod
 func (m *mockGoalRepo) UpdateKeyResult(_ context.Context, kr models.KeyResult) (models.KeyResult, error) {
 	return kr, nil
 }
+func (m *mockGoalRepo) DeleteKeyResult(_ context.Context, _, _ string) error { return nil }
 
 func TestGoalList(t *testing.T) {
 	devEnv(t)
@@ -172,5 +173,25 @@ func TestGoalUpdateKeyResult(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+func TestGoalDeleteKeyResult(t *testing.T) {
+	devEnv(t)
+	h := handlers.NewGoalHandler(&mockGoalRepo{})
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "g-1")
+	rctx.URLParams.Add("kr_id", "kr-1")
+
+	req := httptest.NewRequest("DELETE", "/api/v1/goals/g-1/key-results/kr-1", nil)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	handler := middleware.Auth(http.HandlerFunc(h.DeleteKeyResult))
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", w.Code)
 	}
 }

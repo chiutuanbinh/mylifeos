@@ -32,6 +32,14 @@ func (h *GoalHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"bad request"}`, 400)
 		return
 	}
+	if g.Name == "" {
+		http.Error(w, `{"error":"name is required"}`, 400)
+		return
+	}
+	if len(g.Name) > 100 {
+		http.Error(w, `{"error":"name too long"}`, 400)
+		return
+	}
 	g.UserID = uid
 	if g.Color == "" {
 		g.Color = "#1677ff"
@@ -51,6 +59,14 @@ func (h *GoalHandler) Update(w http.ResponseWriter, r *http.Request) {
 	var g models.Goal
 	if err := json.NewDecoder(r.Body).Decode(&g); err != nil {
 		http.Error(w, `{"error":"bad request"}`, 400)
+		return
+	}
+	if g.Name == "" {
+		http.Error(w, `{"error":"name is required"}`, 400)
+		return
+	}
+	if len(g.Name) > 100 {
+		http.Error(w, `{"error":"name too long"}`, 400)
 		return
 	}
 	g.ID = chi.URLParam(r, "id")
@@ -108,4 +124,13 @@ func (h *GoalHandler) UpdateKeyResult(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(out)
+}
+
+func (h *GoalHandler) DeleteKeyResult(w http.ResponseWriter, r *http.Request) {
+	uid := middleware.GetUserID(r)
+	if err := h.repo.DeleteKeyResult(r.Context(), chi.URLParam(r, "kr_id"), uid); err != nil {
+		http.Error(w, `{"error":"internal"}`, 500)
+		return
+	}
+	w.WriteHeader(204)
 }

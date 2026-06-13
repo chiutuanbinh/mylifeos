@@ -25,11 +25,31 @@ func (h *AssetHandler) List(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(assets)
 }
 
+func validateAsset(a models.Asset) string {
+	if a.Name == "" {
+		return "name is required"
+	}
+	if a.Category == "" {
+		return "category is required"
+	}
+	if a.PurchaseValue != nil && *a.PurchaseValue < 0 {
+		return "purchase_value must be >= 0"
+	}
+	if a.DepreciationRate < 0 || a.DepreciationRate > 1 {
+		return "depreciation_rate must be between 0 and 1"
+	}
+	return ""
+}
+
 func (h *AssetHandler) Create(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.GetUserID(r)
 	var a models.Asset
 	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
 		http.Error(w, `{"error":"bad request"}`, 400)
+		return
+	}
+	if msg := validateAsset(a); msg != "" {
+		http.Error(w, `{"error":"`+msg+`"}`, 400)
 		return
 	}
 	a.UserID = uid
@@ -48,6 +68,10 @@ func (h *AssetHandler) Update(w http.ResponseWriter, r *http.Request) {
 	var a models.Asset
 	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
 		http.Error(w, `{"error":"bad request"}`, 400)
+		return
+	}
+	if msg := validateAsset(a); msg != "" {
+		http.Error(w, `{"error":"`+msg+`"}`, 400)
 		return
 	}
 	a.ID = chi.URLParam(r, "id")

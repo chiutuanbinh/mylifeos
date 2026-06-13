@@ -80,3 +80,49 @@ func (h *HabitHandler) ToggleLog(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(log)
 }
+
+func (h *HabitHandler) Update(w http.ResponseWriter, r *http.Request) {
+	uid := middleware.GetUserID(r)
+	var habit models.Habit
+	if err := json.NewDecoder(r.Body).Decode(&habit); err != nil {
+		http.Error(w, `{"error":"bad request"}`, 400)
+		return
+	}
+	if habit.Name == "" {
+		http.Error(w, `{"error":"name is required"}`, 400)
+		return
+	}
+	if len(habit.Name) > 80 {
+		http.Error(w, `{"error":"name too long"}`, 400)
+		return
+	}
+	habit.ID = chi.URLParam(r, "id")
+	habit.UserID = uid
+	if habit.Icon == "" {
+		habit.Icon = "✓"
+	}
+	out, err := h.repo.Update(r.Context(), habit)
+	if err != nil {
+		http.Error(w, `{"error":"internal"}`, 500)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(out)
+}
+
+func (h *HabitHandler) GetLogRange(w http.ResponseWriter, r *http.Request) {
+	uid := middleware.GetUserID(r)
+	from := r.URL.Query().Get("from")
+	to := r.URL.Query().Get("to")
+	if from == "" || to == "" {
+		http.Error(w, `{"error":"from and to are required"}`, 400)
+		return
+	}
+	logs, err := h.repo.GetLogRange(r.Context(), chi.URLParam(r, "id"), uid, from, to)
+	if err != nil {
+		http.Error(w, `{"error":"internal"}`, 500)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(logs)
+}
