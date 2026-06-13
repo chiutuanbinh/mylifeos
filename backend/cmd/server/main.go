@@ -79,9 +79,11 @@ func main() {
 
 		r.Get("/habits",           habitHandler.List)
 		r.Post("/habits",           habitHandler.Create)
-		r.Delete("/habits/{id}",    habitHandler.Delete)
-		r.Get("/habits/logs",       habitHandler.GetLogs)
-		r.Post("/habits/{id}/log",  habitHandler.ToggleLog)
+		r.Put("/habits/{id}",      habitHandler.Update)
+		r.Delete("/habits/{id}",   habitHandler.Delete)
+		r.Get("/habits/logs",      habitHandler.GetLogs)
+		r.Get("/habits/{id}/logs", habitHandler.GetLogRange)
+		r.Post("/habits/{id}/log", habitHandler.ToggleLog)
 
 		r.Get("/goals",                              goalHandler.List)
 		r.Post("/goals",                              goalHandler.Create)
@@ -89,6 +91,7 @@ func main() {
 		r.Delete("/goals/{id}",                       goalHandler.Delete)
 		r.Post("/goals/{id}/key-results",             goalHandler.AddKeyResult)
 		r.Patch("/goals/{id}/key-results/{kr_id}",    goalHandler.UpdateKeyResult)
+		r.Delete("/goals/{id}/key-results/{kr_id}",   goalHandler.DeleteKeyResult)
 
 		r.Get("/notes",          noteHandler.List)
 		r.Post("/notes",          noteHandler.Create)
