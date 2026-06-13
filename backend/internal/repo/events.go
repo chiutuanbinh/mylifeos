@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,8 +22,14 @@ func NewEventRepo(db *pgxpool.Pool) EventRepo { return &pgEventRepo{db} }
 
 func scanEvent(row interface{ Scan(...any) error }) (models.Event, error) {
 	var e models.Event
-	err := row.Scan(&e.ID, &e.UserID, &e.Title, &e.StartAt, &e.EndAt, &e.Color, &e.AllDay, &e.GoogleEventID)
-	return e, err
+	var startAt, endAt time.Time
+	err := row.Scan(&e.ID, &e.UserID, &e.Title, &startAt, &endAt, &e.Color, &e.AllDay, &e.GoogleEventID)
+	if err != nil {
+		return e, err
+	}
+	e.StartAt = startAt.UTC().Format(time.RFC3339)
+	e.EndAt = endAt.UTC().Format(time.RFC3339)
+	return e, nil
 }
 
 func (r *pgEventRepo) List(ctx context.Context, userID, from, to string) ([]models.Event, error) {
