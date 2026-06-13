@@ -82,6 +82,9 @@ export interface Asset {
   value: number
   purchased_at: string | null
   notes: string
+  purchase_value: number | null
+  depreciation_rate: number
+  current_value: number
 }
 
 export interface UserSettings {
@@ -92,6 +95,7 @@ export interface UserSettings {
 
 export interface DashboardSummary {
   net_worth_trend: number[]
+  net_worth: number
   habits_total: number
   habits_done_today: number
   goals_avg_progress: number

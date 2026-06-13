@@ -69,9 +69,9 @@ export const syncGoogleCalendar = (providerToken: string, timeMin?: string, time
 
 export const getAssets = () =>
   apiClient.get<Asset[]>('/assets').then(r => r.data)
-export const createAsset = (data: Omit<Asset, 'id' | 'user_id'>) =>
+export const createAsset = (data: Omit<Asset, 'id' | 'user_id' | 'current_value'>) =>
   apiClient.post<Asset>('/assets', data).then(r => r.data)
-export const updateAsset = (id: string, data: Partial<Asset>) =>
+export const updateAsset = (id: string, data: Partial<Omit<Asset, 'id' | 'user_id' | 'current_value'>>) =>
   apiClient.patch<Asset>(`/assets/${id}`, data).then(r => r.data)
 export const deleteAsset = (id: string) =>
   apiClient.delete(`/assets/${id}`)

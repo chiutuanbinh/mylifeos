@@ -29,11 +29,28 @@ export function DashboardPage() {
   const habitPct = data.habits_total ? Math.round(data.habits_done_today / data.habits_total * 100) : 0
   const budgetPct = data.budget_total ? Math.round(data.budget_spent / data.budget_total * 100) : 0
 
+  const trend = data.net_worth_trend
+  const netWorth = data.net_worth
+  const prevNetWorth = trend.length >= 2 ? trend[trend.length - 2] : null
+  const netWorthChange = prevNetWorth && prevNetWorth !== 0
+    ? ((netWorth - prevNetWorth) / Math.abs(prevNetWorth) * 100).toFixed(1)
+    : null
+
   const stats = [
-    { label: 'Net Worth',      val: `$${data.net_worth_trend[data.net_worth_trend.length - 1]?.toLocaleString() ?? '—'}`, sub: '↑ +2.1% this month', subC: '#52c41a', spark: data.net_worth_trend, sparkC: '#52c41a', nav: '/finance' },
+    {
+      label: 'Net Worth',
+      val: `$${netWorth.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+      sub: netWorthChange !== null
+        ? `${Number(netWorthChange) >= 0 ? '↑' : '↓'} ${Math.abs(Number(netWorthChange))}% vs last snapshot`
+        : 'No history yet',
+      subC: netWorthChange !== null && Number(netWorthChange) >= 0 ? '#52c41a' : '#ff4d4f',
+      spark: trend,
+      sparkC: '#52c41a',
+      nav: '/wealth',
+    },
     { label: "Today's Habits", val: `${data.habits_done_today} / ${data.habits_total}`, sub: `${habitPct}% complete`, subC: '#1677ff', pct: habitPct, nav: '/health' },
     { label: 'Goals (avg)',    val: `${data.goals_avg_progress}%`, sub: 'active OKRs', subC: '#722ed1', pct: data.goals_avg_progress, pctC: '#722ed1', nav: '/goals' },
-    { label: 'Monthly Budget', val: `$${data.budget_total.toLocaleString()}`, sub: `$${data.budget_spent.toLocaleString()} spent · ${budgetPct}%`, subC: '#fa8c16', pct: budgetPct, pctC: '#fa8c16', nav: '/finance' },
+    { label: 'Monthly Budget', val: `$${data.budget_total.toLocaleString()}`, sub: `$${data.budget_spent.toLocaleString()} spent · ${budgetPct}%`, subC: '#fa8c16', pct: budgetPct, pctC: '#fa8c16', nav: '/wealth' },
   ]
 
   return (
@@ -53,7 +70,7 @@ export function DashboardPage() {
       </Row>
       <Row gutter={[12, 12]}>
         <Col span={24}>
-          <Card size="small" title={<span style={{ fontSize: 13 }}>Recent Transactions</span>} extra={<a onClick={() => navigate('/finance')} style={{ fontSize: 12 }}>View all →</a>}>
+          <Card size="small" title={<span style={{ fontSize: 13 }}>Recent Transactions</span>} extra={<a onClick={() => navigate('/wealth')} style={{ fontSize: 12 }}>View all →</a>}>
             <Table dataSource={data.recent_transactions} columns={txColumns} size="small" pagination={false} rowKey="id" />
           </Card>
         </Col>

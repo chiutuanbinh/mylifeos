@@ -5,12 +5,11 @@ import { AppShell } from './components/AppShell'
 import { LoginPage } from './pages/LoginPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { DashboardPage } from './pages/DashboardPage'
-import { FinancePage } from './pages/FinancePage'
+import { WealthPage } from './pages/WealthPage'
 import { HealthPage } from './pages/HealthPage'
 import { GoalsPage } from './pages/GoalsPage'
 import { NotesPage } from './pages/NotesPage'
 import { CalendarPage } from './pages/CalendarPage'
-import { InventoryPage } from './pages/InventoryPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -30,12 +29,11 @@ export default function App() {
               <AppShell>
                 <Routes>
                   <Route path="/"          element={<DashboardPage />} />
-                  <Route path="/finance"   element={<FinancePage />} />
+                  <Route path="/wealth"    element={<WealthPage />} />
                   <Route path="/health"    element={<HealthPage />} />
                   <Route path="/goals"     element={<GoalsPage />} />
                   <Route path="/notes"     element={<NotesPage />} />
                   <Route path="/calendar"  element={<CalendarPage />} />
-                  <Route path="/inventory" element={<InventoryPage />} />
                   <Route path="/settings"  element={<SettingsPage />} />
                 </Routes>
               </AppShell>

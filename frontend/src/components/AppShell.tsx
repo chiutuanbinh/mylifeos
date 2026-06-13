@@ -3,28 +3,31 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu, Avatar, Badge, Space, Button, Breadcrumb, Typography } from 'antd'
 import {
   DashboardOutlined, DollarOutlined, HeartOutlined, TrophyOutlined,
-  FileTextOutlined, CalendarOutlined, AppstoreOutlined, SettingOutlined,
+  FileTextOutlined, CalendarOutlined, SettingOutlined,
   BellOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/auth'
 
 const NAV = [
-  { key: '/',          icon: <DashboardOutlined />, label: 'Dashboard' },
+  { key: '/',         icon: <DashboardOutlined />, label: 'Dashboard' },
   { type: 'divider' as const },
-  { key: '/finance',   icon: <DollarOutlined />,   label: 'Finance' },
-  { key: '/health',    icon: <HeartOutlined />,     label: 'Health & Habits' },
-  { key: '/goals',     icon: <TrophyOutlined />,    label: 'Goals & OKRs' },
-  { key: '/notes',     icon: <FileTextOutlined />,  label: 'Notes' },
-  { key: '/calendar',  icon: <CalendarOutlined />,  label: 'Calendar' },
-  { key: '/inventory', icon: <AppstoreOutlined />,  label: 'Inventory' },
+  { key: '/wealth',   icon: <DollarOutlined />,   label: 'Wealth' },
+  { key: '/health',   icon: <HeartOutlined />,    label: 'Health & Habits' },
+  { key: '/goals',    icon: <TrophyOutlined />,   label: 'Goals & OKRs' },
+  { key: '/notes',    icon: <FileTextOutlined />, label: 'Notes' },
+  { key: '/calendar', icon: <CalendarOutlined />, label: 'Calendar' },
   { type: 'divider' as const },
-  { key: '/settings',  icon: <SettingOutlined />,   label: 'Settings' },
+  { key: '/settings', icon: <SettingOutlined />,  label: 'Settings' },
 ]
 
 const TITLES: Record<string, string> = {
-  '/': 'Dashboard', '/finance': 'Finance & Budget', '/health': 'Health & Habits',
-  '/goals': 'Goals & OKRs', '/notes': 'Notes & Knowledge', '/calendar': 'Calendar & Schedule',
-  '/inventory': 'Inventory & Assets', '/settings': 'Settings',
+  '/': 'Dashboard',
+  '/wealth': 'Wealth',
+  '/health': 'Health & Habits',
+  '/goals': 'Goals & OKRs',
+  '/notes': 'Notes & Knowledge',
+  '/calendar': 'Calendar & Schedule',
+  '/settings': 'Settings',
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
