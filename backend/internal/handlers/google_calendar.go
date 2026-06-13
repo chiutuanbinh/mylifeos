@@ -19,6 +19,9 @@ func NewGoogleCalendarHandler(r repo.EventRepo) *GoogleCalendarHandler {
 	return &GoogleCalendarHandler{r}
 }
 
+// gcalBaseURL is the Google Calendar API base. Overridable in tests.
+var gcalBaseURL = "https://www.googleapis.com/calendar/v3"
+
 type gcalSyncRequest struct {
 	ProviderToken string `json:"provider_token"`
 	TimeMin       string `json:"time_min"`
@@ -101,7 +104,7 @@ func fetchGCalEvents(token, timeMin, timeMax string) ([]gcalEvent, error) {
 		"orderBy":      {"startTime"},
 		"maxResults":   {"500"},
 	}
-	apiURL := "https://www.googleapis.com/calendar/v3/calendars/primary/events?" + params.Encode()
+	apiURL := gcalBaseURL + "/calendars/primary/events?" + params.Encode()
 
 	req, _ := http.NewRequest("GET", apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+token)

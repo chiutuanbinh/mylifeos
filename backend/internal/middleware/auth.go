@@ -21,6 +21,13 @@ var (
 	jwksKeyFunc jwt.Keyfunc
 )
 
+// ResetKeyFunc clears the cached JWKS keyfunc. Used in tests only.
+func ResetKeyFunc() {
+	jwksMu.Lock()
+	defer jwksMu.Unlock()
+	jwksKeyFunc = nil
+}
+
 func getKeyFunc() (jwt.Keyfunc, error) {
 	jwksMu.Lock()
 	defer jwksMu.Unlock()
