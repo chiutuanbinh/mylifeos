@@ -15,8 +15,6 @@ jobs:
       - name: Vet
         run: cd backend && go vet ./...
       - name: Test with coverage
-        # Exclude packages that require a live DB (repo, migrate) and the binary entrypoint (cmd/server).
-        # Coverage is enforced on handlers and middleware — the pure-logic packages with unit tests.
         run: |
           cd backend && go test \
             ./internal/handlers/... \
