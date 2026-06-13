@@ -70,12 +70,12 @@ export function CalendarPage() {
   }, [fromDate, toDate, syncGoogle])
 
   const addMutation = useMutation({
-    mutationFn: (values: Record<string, string>) => createEvent({
-      title: values.title,
+    mutationFn: (values: Record<string, string | boolean>) => createEvent({
+      title: values.title as string,
       start_at: new Date(`${values.date}T${values.start_time || '09:00'}`).toISOString(),
       end_at: new Date(`${values.date}T${values.end_time || '10:00'}`).toISOString(),
-      color: values.color || '#1677ff',
-      all_day: values.all_day || false,
+      color: (values.color as string) || '#1677ff',
+      all_day: Boolean(values.all_day),
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['events'] }); setAddOpen(false); form.resetFields() },
   })
