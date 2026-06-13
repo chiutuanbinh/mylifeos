@@ -26,10 +26,8 @@ test.describe('Notes page', () => {
   });
 
   test('create note calls API', async ({ page }) => {
-    let createCalled = false;
     await page.route('http://localhost:8080/api/v1/notes', route => {
       if (route.request().method() === 'POST') {
-        createCalled = true;
         route.fulfill({
           status: 201,
           contentType: 'application/json',

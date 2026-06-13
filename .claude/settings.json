@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'f=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; [[ \"$f\" == */frontend/src/* || \"$f\" == */frontend/tests/* ]] && cd /Users/binhct/workspace/mylifeos/frontend && npm run lint --silent 2>&1 | head -20 || true'"
+          }
+        ]
+      }
+    ]
+  }
+}

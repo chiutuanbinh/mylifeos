@@ -37,10 +37,8 @@ test.describe('Finance page', () => {
   });
 
   test('create transaction calls API', async ({ page }) => {
-    let createCalled = false;
     await page.route('http://localhost:8080/api/v1/transactions', route => {
       if (route.request().method() === 'POST') {
-        createCalled = true;
         route.fulfill({
           status: 201,
           contentType: 'application/json',
