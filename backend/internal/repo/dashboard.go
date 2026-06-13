@@ -133,7 +133,9 @@ func (r *pgDashboardRepo) Summary(ctx context.Context, userID string) (models.Da
 	defer rows.Close()
 	for rows.Next() {
 		var t models.Transaction
-		rows.Scan(&t.ID, &t.UserID, &t.Date, &t.Description, &t.Category, &t.Amount, &t.CreatedAt)
+		var date time.Time
+		rows.Scan(&t.ID, &t.UserID, &date, &t.Description, &t.Category, &t.Amount, &t.CreatedAt)
+		t.Date = date.Format("2006-01-02")
 		s.RecentTx = append(s.RecentTx, t)
 	}
 	if s.RecentTx == nil {

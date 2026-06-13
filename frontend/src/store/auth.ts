@@ -20,8 +20,14 @@ export function getStoredProviderToken(): string | null {
   } catch { return null }
 }
 
+// Allow e2e tests to pre-seed a token via sessionStorage (dev only, ignored in prod)
+const e2eToken = import.meta.env.DEV
+  ? (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('e2e_token') : null)
+  : null;
+
 // Restore session from Supabase on page load, keep in sync on token refresh.
-if (supabase) {
+// Skip when e2e test token is present — Supabase INITIAL_SESSION null would overwrite it.
+if (supabase && !e2eToken) {
   supabase.auth.getSession().then(({ data }) => {
     const token = data.session?.access_token
     if (token) useAuthStore.setState({ token })
@@ -51,7 +57,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  token: null,
+  token: e2eToken,
   loading: false,
 
   signIn: async (email, password) => {
@@ -95,3 +101,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ token: null })
   },
 }))
+
+// Expose store for e2e tests (dev only, tree-shaken in production)
+if (import.meta.env.DEV) {
+  (window as Window & { __authStore__?: typeof useAuthStore }).__authStore__ = useAuthStore;
+}
