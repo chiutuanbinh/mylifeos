@@ -30,6 +30,10 @@ func (m *mockHabitRepo) GetLogs(_ context.Context, _, _ string) ([]models.HabitL
 func (m *mockHabitRepo) ToggleLog(_ context.Context, _, _, _ string) (models.HabitLog, error) {
 	return models.HabitLog{ID: "hl-1", Done: true}, nil
 }
+func (m *mockHabitRepo) Update(_ context.Context, h models.Habit) (models.Habit, error) { return h, nil }
+func (m *mockHabitRepo) GetLogRange(_ context.Context, _, _, _, _ string) ([]models.HabitLog, error) {
+	return []models.HabitLog{}, nil
+}
 
 func TestHabitList(t *testing.T) {
 	devEnv(t)
@@ -130,6 +134,67 @@ func TestHabitGetLogs(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+func TestHabitUpdate(t *testing.T) {
+	devEnv(t)
+	h := handlers.NewHabitHandler(&mockHabitRepo{})
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "h-1")
+
+	body, _ := json.Marshal(map[string]any{"name": "Updated Habit", "icon": "🏃"})
+	req := httptest.NewRequest("PUT", "/api/v1/habits/h-1", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	handler := middleware.Auth(http.HandlerFunc(h.Update))
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHabitUpdate_MissingName(t *testing.T) {
+	devEnv(t)
+	h := handlers.NewHabitHandler(&mockHabitRepo{})
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "h-1")
+
+	body, _ := json.Marshal(map[string]any{"name": ""})
+	req := httptest.NewRequest("PUT", "/api/v1/habits/h-1", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	handler := middleware.Auth(http.HandlerFunc(h.Update))
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestHabitGetLogRange(t *testing.T) {
+	devEnv(t)
+	h := handlers.NewHabitHandler(&mockHabitRepo{})
+
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "h-1")
+
+	req := httptest.NewRequest("GET", "/api/v1/habits/h-1/logs?from=2026-06-01&to=2026-06-30", nil)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	handler := middleware.Auth(http.HandlerFunc(h.GetLogRange))
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 }
 

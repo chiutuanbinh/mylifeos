@@ -64,7 +64,7 @@ func TestAssetUpdate_DBError(t *testing.T) {
 	h := handlers.NewAssetHandler(&errAssetRepo{})
 	r := chi.NewRouter()
 	r.Put("/assets/{id}", middleware.Auth(http.HandlerFunc(h.Update)).(http.HandlerFunc))
-	body, _ := json.Marshal(map[string]any{"name": "X"})
+	body, _ := json.Marshal(map[string]any{"name": "X", "category": "vehicle"})
 	req := httptest.NewRequest("PUT", "/assets/a-1", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -94,6 +94,7 @@ func (m *errGoalRepo) AddKeyResult(_ context.Context, _ models.KeyResult) (model
 func (m *errGoalRepo) UpdateKeyResult(_ context.Context, _ models.KeyResult) (models.KeyResult, error) {
 	return models.KeyResult{}, errDB
 }
+func (m *errGoalRepo) DeleteKeyResult(_ context.Context, _, _ string) error { return errDB }
 
 func TestGoalList_DBError(t *testing.T) {
 	devEnv(t)
@@ -136,6 +137,12 @@ func (m *errHabitRepo) GetLogs(_ context.Context, _, _ string) ([]models.HabitLo
 }
 func (m *errHabitRepo) ToggleLog(_ context.Context, _, _, _ string) (models.HabitLog, error) {
 	return models.HabitLog{}, errDB
+}
+func (m *errHabitRepo) Update(_ context.Context, _ models.Habit) (models.Habit, error) {
+	return models.Habit{}, errDB
+}
+func (m *errHabitRepo) GetLogRange(_ context.Context, _, _, _, _ string) ([]models.HabitLog, error) {
+	return nil, errDB
 }
 
 func TestHabitList_DBError(t *testing.T) {

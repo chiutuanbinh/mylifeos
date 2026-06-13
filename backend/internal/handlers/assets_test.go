@@ -17,7 +17,8 @@ import (
 type mockAssetRepo struct{}
 
 func (m *mockAssetRepo) List(_ context.Context, _ string) ([]models.Asset, error) {
-	return []models.Asset{{ID: "a-1", Name: "Car", Category: "vehicle", Value: 10000}}, nil
+	pv := 12000.0
+	return []models.Asset{{ID: "a-1", Name: "Car", Category: "vehicle", Value: 10000, PurchaseValue: &pv, DepreciationRate: 0.15, CurrentValue: 9800}}, nil
 }
 func (m *mockAssetRepo) Create(_ context.Context, a models.Asset) (models.Asset, error) {
 	a.ID = "a-new"
@@ -84,7 +85,7 @@ func TestAssetUpdate(t *testing.T) {
 	r := chi.NewRouter()
 	r.Put("/assets/{id}", middleware.Auth(http.HandlerFunc(h.Update)).(http.HandlerFunc))
 
-	body, _ := json.Marshal(map[string]any{"name": "Updated", "value": 2000.0})
+	body, _ := json.Marshal(map[string]any{"name": "Updated", "category": "vehicle", "value": 2000.0})
 	req := httptest.NewRequest("PUT", "/assets/a-1", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -92,6 +93,38 @@ func TestAssetUpdate(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+func TestAssetCreate_MissingName(t *testing.T) {
+	devEnv(t)
+	h := handlers.NewAssetHandler(&mockAssetRepo{})
+	handler := middleware.Auth(http.HandlerFunc(h.Create))
+
+	body, _ := json.Marshal(map[string]any{"category": "electronics", "value": 1500.0})
+	req := httptest.NewRequest("POST", "/api/v1/assets", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestAssetCreate_InvalidDepreciationRate(t *testing.T) {
+	devEnv(t)
+	h := handlers.NewAssetHandler(&mockAssetRepo{})
+	handler := middleware.Auth(http.HandlerFunc(h.Create))
+
+	body, _ := json.Marshal(map[string]any{"name": "Car", "category": "vehicle", "value": 10000.0, "depreciation_rate": 1.5})
+	req := httptest.NewRequest("POST", "/api/v1/assets", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
 
