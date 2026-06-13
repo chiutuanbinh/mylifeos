@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -19,6 +20,7 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	events, err := h.repo.List(r.Context(), uid, q.Get("from"), q.Get("to"))
 	if err != nil {
+		log.Printf("events.List: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
@@ -39,6 +41,7 @@ func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := h.repo.Create(r.Context(), e)
 	if err != nil {
+		log.Printf("events.Create: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
@@ -58,6 +61,7 @@ func (h *EventHandler) Update(w http.ResponseWriter, r *http.Request) {
 	e.UserID = uid
 	out, err := h.repo.Update(r.Context(), e)
 	if err != nil {
+		log.Printf("events.Update: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
@@ -68,6 +72,7 @@ func (h *EventHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *EventHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.GetUserID(r)
 	if err := h.repo.Delete(r.Context(), chi.URLParam(r, "id"), uid); err != nil {
+		log.Printf("events.Delete: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
