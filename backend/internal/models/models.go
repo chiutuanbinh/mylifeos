@@ -44,6 +44,7 @@ type Goal struct {
 	TargetDate  *string     `json:"target_date"`
 	Progress    int         `json:"progress"`
 	Color       string      `json:"color"`
+	Status      string      `json:"status"`
 	CreatedAt   time.Time   `json:"created_at"`
 	KeyResults  []KeyResult `json:"key_results,omitempty"`
 }
@@ -79,13 +80,16 @@ type Event struct {
 }
 
 type Asset struct {
-	ID          string  `json:"id"`
-	UserID      string  `json:"user_id"`
-	Name        string  `json:"name"`
-	Category    string  `json:"category"`
-	Value       float64 `json:"value"`
-	PurchasedAt *string `json:"purchased_at"`
-	Notes       string  `json:"notes"`
+	ID               string   `json:"id"`
+	UserID           string   `json:"user_id"`
+	Name             string   `json:"name"`
+	Category         string   `json:"category"`
+	Value            float64  `json:"value"`
+	PurchasedAt      *string  `json:"purchased_at"`
+	Notes            string   `json:"notes"`
+	PurchaseValue    *float64 `json:"purchase_value"`
+	DepreciationRate float64  `json:"depreciation_rate"`
+	CurrentValue     float64  `json:"current_value"`
 }
 
 type UserSettings struct {
@@ -94,8 +98,18 @@ type UserSettings struct {
 	ModulesEnabled map[string]any `json:"modules_enabled"`
 }
 
+type NetWorthSnapshot struct {
+	ID           string  `json:"id"`
+	UserID       string  `json:"user_id"`
+	SnapshotDate string  `json:"snapshot_date"`
+	AssetsValue  float64 `json:"assets_value"`
+	CashPosition float64 `json:"cash_position"`
+	NetWorth     float64 `json:"net_worth"`
+}
+
 type DashboardSummary struct {
 	NetWorthTrend    []float64     `json:"net_worth_trend"`
+	NetWorth         float64       `json:"net_worth"`
 	HabitsTotal      int           `json:"habits_total"`
 	HabitsDoneToday  int           `json:"habits_done_today"`
 	GoalsAvgProgress int           `json:"goals_avg_progress"`
