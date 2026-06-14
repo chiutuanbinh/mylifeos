@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -72,46 +73,61 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-// fetchVNIndex uses Yahoo Finance chart API for ^VNINDEX.
-// This endpoint is rate-limited from some IPs — failures are logged and skipped.
+// fetchVNIndex uses CafeF real-time prices API.
+// Returns error when market is closed (Price=0) so DB retains last known value.
 func fetchVNIndex(ctx context.Context) (float64, error) {
-	body, err := httpGet(ctx, "https://query1.finance.yahoo.com/v8/finance/chart/%5EVNINDEX?range=1d&interval=1d")
+	body, err := httpGet(ctx, "https://cafef.vn/du-lieu/Ajax/PageNew/RealtimePricesHeader.ashx?symbols=VNINDEX")
 	if err != nil {
 		return 0, err
 	}
-	re := regexp.MustCompile(`"regularMarketPrice":\s*([0-9]+\.?[0-9]*)`)
-	m := re.FindSubmatch(body)
-	if m == nil {
-		return 0, fmt.Errorf("regularMarketPrice not found in response")
+	var data map[string]struct {
+		Price float64 `json:"Price"`
 	}
-	return strconv.ParseFloat(string(m[1]), 64)
+	if err := json.Unmarshal(body, &data); err != nil {
+		return 0, fmt.Errorf("json decode: %w", err)
+	}
+	v, ok := data["VNINDEX"]
+	if !ok {
+		return 0, fmt.Errorf("VNINDEX not found in response")
+	}
+	if v.Price == 0 {
+		return 0, fmt.Errorf("market closed or no data")
+	}
+	return v.Price, nil
 }
 
-// fetchSJCGold parses the SJC XML feed for the "SJC" buy price (VND per tael).
-// Note: sjc.com.vn/xml/tygiavang.xml may be unavailable depending on network/region.
+// fetchSJCGold fetches SJC buy price (VND per tael) from PNJ gold API.
+// PNJ returns prices in thousands VND (e.g. "144.000" = 144,000 thousand = 144,000,000 VND).
 func fetchSJCGold(ctx context.Context) (float64, error) {
-	body, err := httpGet(ctx, "https://sjc.com.vn/xml/tygiavang.xml")
+	body, err := httpGet(ctx, "https://edge-cf-api.pnj.io/ecom-frontend/v3/get-gold-price")
 	if err != nil {
 		return 0, err
 	}
-	type Item struct {
-		Type string `xml:"type,attr"`
-		Buy  string `xml:"buy,attr"`
+	var resp struct {
+		Locations []struct {
+			GoldType []struct {
+				Name   string `json:"name"`
+				GiaMua string `json:"gia_mua"`
+			} `json:"gold_type"`
+		} `json:"locations"`
 	}
-	type Root struct {
-		Items []Item `xml:"ratelist>item"`
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return 0, fmt.Errorf("json decode: %w", err)
 	}
-	var root Root
-	if err := xml.Unmarshal(body, &root); err != nil {
-		return 0, fmt.Errorf("xml decode: %w", err)
-	}
-	for _, item := range root.Items {
-		if strings.Contains(item.Type, "SJC") {
-			s := strings.ReplaceAll(item.Buy, ",", "")
-			return strconv.ParseFloat(strings.TrimSpace(s), 64)
+	for _, loc := range resp.Locations {
+		for _, gt := range loc.GoldType {
+			if strings.Contains(gt.Name, "SJC") {
+				// "144.000" VN format: dot is thousands separator → 144000 thousand VND → × 1000 = VND
+				s := strings.ReplaceAll(gt.GiaMua, ".", "")
+				v, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+				if err != nil {
+					return 0, fmt.Errorf("parse price %q: %w", gt.GiaMua, err)
+				}
+				return v * 1000, nil
+			}
 		}
 	}
-	return 0, fmt.Errorf("SJC item not found")
+	return 0, fmt.Errorf("SJC not found in PNJ response")
 }
 
 // fetchBankRates scrapes 12-month saving + lending rates from major VN banks.
