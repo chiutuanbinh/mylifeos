@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS public.liabilities (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id            TEXT NOT NULL,
+  user_id            UUID NOT NULL,
   name               TEXT NOT NULL,
   category           TEXT NOT NULL,
   balance            FLOAT8 NOT NULL DEFAULT 0,
