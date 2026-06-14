@@ -130,67 +130,109 @@ func fetchSJCGold(ctx context.Context) (float64, error) {
 	return 0, fmt.Errorf("SJC not found in PNJ response")
 }
 
-// fetchBankRates scrapes 12-month saving + lending rates from major VN banks.
-// Bank websites use JavaScript rendering; regex parse may fail — failures are logged and skipped.
+// fetchBankRates scrapes 12-month saving rates from VNExpress's regularly-updated
+// bank rate article. Individual bank sites use JS rendering so are unreliable.
+//
+// Source: https://vnexpress.net/chu-de/lai-suat-ngan-hang-3210
 func fetchBankRates(ctx context.Context) []models.BankRate {
-	type bankTarget struct {
-		id      string
-		url     string
-		saving  *regexp.Regexp
-		lending *regexp.Regexp
-	}
-
-	targets := []bankTarget{
-		{
-			id:      "vcb",
-			url:     "https://www.vietcombank.com.vn/vi-VN/KHCN/Cong-cu-Tien-ich/Lai-suat",
-			saving:  regexp.MustCompile(`12\s*tháng[^%]*?(\d+[,.]?\d*)\s*%`),
-			lending: regexp.MustCompile(`Lãi suất cho vay[^%]*?(\d+[,.]?\d*)\s*%`),
-		},
-		{
-			id:      "bidv",
-			url:     "https://www.bidv.com.vn/vi/lai-suat-tiet-kiem",
-			saving:  regexp.MustCompile(`12\s*tháng[^%]*?(\d+[,.]?\d*)\s*%`),
-			lending: regexp.MustCompile(`cho vay[^%]*?(\d+[,.]?\d*)\s*%`),
-		},
-		{
-			id:      "agribank",
-			url:     "https://www.agribank.com.vn/vn/lai-suat/lai-suat-huy-dong",
-			saving:  regexp.MustCompile(`12\s*tháng[^%]*?(\d+[,.]?\d*)\s*%`),
-			lending: regexp.MustCompile(`(\d+[,.]?\d*)\s*%.*cho vay`),
-		},
-		{
-			id:      "tcb",
-			url:     "https://techcombank.com/khach-hang-ca-nhan/tiet-kiem/tien-gui-tiet-kiem-co-ky-han",
-			saving:  regexp.MustCompile(`12\s*tháng[^%]*?(\d+[,.]?\d*)\s*%`),
-			lending: regexp.MustCompile(`cho vay[^%]*?(\d+[,.]?\d*)\s*%`),
-		},
-	}
-
 	parseRate := func(s string) float64 {
 		s = strings.ReplaceAll(s, ",", ".")
 		v, _ := strconv.ParseFloat(s, 64)
 		return v
 	}
 
+	// Step 1: fetch the topic page to find the latest rate article URL.
+	topicBody, err := httpGet(ctx, "https://vnexpress.net/chu-de/lai-suat-ngan-hang-3210")
+	if err != nil {
+		log.Printf("scraper: bank rates topic fetch: %v", err)
+		return nil
+	}
+	articleRe := regexp.MustCompile(`href="(https://vnexpress\.net/lai-suat-tiet-kiem-ngan-hang-nao-cao-nhat-\d+\.html)"`)
+	am := articleRe.FindSubmatch(topicBody)
+	if am == nil {
+		log.Printf("scraper: bank rates article link not found on topic page")
+		return nil
+	}
+	articleURL := string(am[1])
+
+	// Step 2: fetch the article body.
+	articleBody, err := httpGet(ctx, articleURL)
+	if err != nil {
+		log.Printf("scraper: bank rates article fetch %s: %v", articleURL, err)
+		return nil
+	}
+	text := string(articleBody)
+
+	// Step 3: extract rates from article text.
+	// Range pattern like "6,6-6,8" → use average. Single like "6,5" → use as-is.
+	rateRe := regexp.MustCompile(`(\d+[,\.]\d+)(?:-(\d+[,\.]\d+))?\s*%`)
+
+	extractRate := func(context string) float64 {
+		m := rateRe.FindStringSubmatch(context)
+		if m == nil {
+			return 0
+		}
+		lo := parseRate(m[1])
+		if m[2] != "" {
+			hi := parseRate(m[2])
+			return (lo + hi) / 2
+		}
+		return lo
+	}
+
+	// Map Vietnamese bank name patterns to IDs.
+	type bankMapping struct {
+		id      string
+		pattern *regexp.Regexp
+	}
+	mappings := []bankMapping{
+		{"vcb", regexp.MustCompile(`(?i)Vietcombank|VCB`)},
+		{"bidv", regexp.MustCompile(`(?i)BIDV`)},
+		{"agribank", regexp.MustCompile(`(?i)Agribank`)},
+		{"tcb", regexp.MustCompile(`(?i)Techcombank|TCB`)},
+	}
+
+	found := map[string]float64{}
+
+	// Split text into sentences and look for bank + rate co-occurrence.
+	sentences := strings.Split(text, ".")
+	for _, sent := range sentences {
+		for _, bm := range mappings {
+			if bm.pattern.MatchString(sent) {
+				if r := extractRate(sent); r > 0 {
+					if _, already := found[bm.id]; !already {
+						found[bm.id] = r
+					}
+				}
+			}
+		}
+	}
+
+	// Fallback: if state-owned banks mention a group rate, apply to unmapped ones.
+	// Article often says "BIDV, Agribank, VietinBank trả X-Y%".
+	stateRe := regexp.MustCompile(`(?i)(BIDV|Agribank|VietinBank)[^\n.]*?(\d+[,\.]\d+(?:-\d+[,\.]\d+)?)\s*%`)
+	if sm := stateRe.FindStringSubmatch(text); sm != nil {
+		groupRate := extractRate(sm[2] + "%")
+		for _, id := range []string{"vcb", "bidv", "agribank"} {
+			if _, ok := found[id]; !ok && groupRate > 0 {
+				found[id] = groupRate
+			}
+		}
+	}
+
+	if len(found) == 0 {
+		log.Printf("scraper: bank rates no rates parsed from %s", articleURL)
+		return nil
+	}
+
 	var out []models.BankRate
-	for _, t := range targets {
-		body, err := httpGet(ctx, t.url)
-		if err != nil {
-			log.Printf("scraper: bank %s fetch: %v", t.id, err)
-			continue
-		}
-		sm := t.saving.FindSubmatch(body)
-		lm := t.lending.FindSubmatch(body)
-		if sm == nil || lm == nil {
-			log.Printf("scraper: bank %s rate parse failed", t.id)
-			continue
-		}
+	for id, rate := range found {
 		out = append(out, models.BankRate{
-			Bank:      t.id,
-			Saving12m: parseRate(string(sm[1])),
-			Lending:   parseRate(string(lm[1])),
+			Bank:      id,
+			Saving12m: rate,
+			Lending:   0, // VNExpress article focuses on saving rates
 		})
+		log.Printf("scraper: bank %s saving12m=%.2f%%", id, rate)
 	}
 	return out
 }
