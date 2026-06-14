@@ -28,6 +28,7 @@ export default function App() {
               <AppShell>
                 <Routes>
                   <Route path="/"          element={<DashboardPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/wealth"    element={<WealthPage />} />
                   <Route path="/objectives" element={<ObjectivesPage />} />
                   <Route path="/notes"     element={<NotesPage />} />
