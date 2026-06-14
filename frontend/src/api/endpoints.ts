@@ -1,7 +1,7 @@
 import { apiClient } from './client'
 import type {
   Transaction, Budget, Goal, KeyResult, KRLog,
-  Note, Event, Asset, UserSettings, DashboardSummary,
+  Note, Event, Asset, Liability, UserSettings, DashboardSummary,
   NetWorthSnapshot, BenchmarkData, BankRate, NewsItem,
 } from './types'
 
@@ -101,3 +101,12 @@ export const getNews = () =>
 
 export const triggerScrape = () =>
   apiClient.post<{ status: string }>('/scrape').then(r => r.data)
+
+export const getLiabilities = () =>
+  apiClient.get<Liability[]>('/liabilities').then(r => r.data)
+export const createLiability = (data: Omit<Liability, 'id' | 'user_id'>) =>
+  apiClient.post<Liability>('/liabilities', data).then(r => r.data)
+export const updateLiability = (id: string, data: Partial<Omit<Liability, 'id' | 'user_id'>>) =>
+  apiClient.patch<Liability>(`/liabilities/${id}`, data).then(r => r.data)
+export const deleteLiability = (id: string) =>
+  apiClient.delete(`/liabilities/${id}`)

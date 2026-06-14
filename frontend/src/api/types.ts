@@ -82,6 +82,19 @@ export interface Asset {
   current_value: number
 }
 
+export interface Liability {
+  id: string
+  user_id: string
+  name: string
+  category: string
+  balance: number
+  original_principal: number | null
+  interest_rate: number | null
+  started_at: string | null
+  due_at: string | null
+  notes: string
+}
+
 export interface UserSettings {
   user_id: string
   notifications: Record<string, boolean>
