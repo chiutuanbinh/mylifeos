@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -60,7 +61,7 @@ func (h *TrendsHandler) AddSnapshot(w http.ResponseWriter, r *http.Request) {
 
 func (h *TrendsHandler) ListBenchmarks(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	sources := strings.Split(q.Get("sources"), ",")
+	sourcesParam := q.Get("sources")
 	from := q.Get("from")
 	to := q.Get("to")
 	if from == "" {
@@ -69,13 +70,13 @@ func (h *TrendsHandler) ListBenchmarks(w http.ResponseWriter, r *http.Request) {
 	if to == "" {
 		to = time.Now().Format("2006-01-02")
 	}
-	var filteredSources []string
-	for _, s := range sources {
+	var sources []string
+	for _, s := range strings.Split(sourcesParam, ",") {
 		if s != "" {
-			filteredSources = append(filteredSources, s)
+			sources = append(sources, s)
 		}
 	}
-	data, err := h.repo.ListBenchmarks(r.Context(), filteredSources, from, to)
+	data, err := h.repo.ListBenchmarks(r.Context(), sources, from, to)
 	if err != nil {
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
@@ -104,9 +105,10 @@ func (h *TrendsHandler) ListNews(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(news)
 }
 
-// TriggerScrape manually triggers the scraper (non-blocking).
+// TriggerScrape manually triggers the scraper in a background goroutine.
+// Uses context.Background() so the scrape outlives the HTTP request.
 func (h *TrendsHandler) TriggerScrape(w http.ResponseWriter, r *http.Request) {
-	go scraper.Run(r.Context(), h.repo)
+	go scraper.Run(context.Background(), h.repo)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "scrape started"})
 }

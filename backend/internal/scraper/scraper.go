@@ -44,7 +44,7 @@ func Run(ctx context.Context, r repo.TrendsRepo) {
 		}
 	}
 
-	if news, err := fetchCafefNews(ctx); err != nil {
+	if news, err := fetchNews(ctx); err != nil {
 		log.Printf("scraper: news: %v", err)
 	} else {
 		if err := r.UpsertNews(ctx, news); err != nil {
@@ -72,7 +72,8 @@ func httpGet(ctx context.Context, url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-// fetchVNIndex uses Yahoo Finance chart API for ^VNINDEX (free, no auth required).
+// fetchVNIndex uses Yahoo Finance chart API for ^VNINDEX.
+// This endpoint is rate-limited from some IPs — failures are logged and skipped.
 func fetchVNIndex(ctx context.Context) (float64, error) {
 	body, err := httpGet(ctx, "https://query1.finance.yahoo.com/v8/finance/chart/%5EVNINDEX?range=1d&interval=1d")
 	if err != nil {
@@ -87,6 +88,7 @@ func fetchVNIndex(ctx context.Context) (float64, error) {
 }
 
 // fetchSJCGold parses the SJC XML feed for the "SJC" buy price (VND per tael).
+// Note: sjc.com.vn/xml/tygiavang.xml may be unavailable depending on network/region.
 func fetchSJCGold(ctx context.Context) (float64, error) {
 	body, err := httpGet(ctx, "https://sjc.com.vn/xml/tygiavang.xml")
 	if err != nil {
@@ -112,7 +114,8 @@ func fetchSJCGold(ctx context.Context) (float64, error) {
 	return 0, fmt.Errorf("SJC item not found")
 }
 
-// fetchBankRates scrapes standard lending + 12-month saving rates from major VN banks.
+// fetchBankRates scrapes 12-month saving + lending rates from major VN banks.
+// Bank websites use JavaScript rendering; regex parse may fail — failures are logged and skipped.
 func fetchBankRates(ctx context.Context) []models.BankRate {
 	type bankTarget struct {
 		id      string
@@ -142,7 +145,7 @@ func fetchBankRates(ctx context.Context) []models.BankRate {
 		},
 		{
 			id:      "tcb",
-			url:     "https://techcombank.com/khach-hang-ca-nhan/tiet-kiem/lai-suat-tiet-kiem",
+			url:     "https://techcombank.com/khach-hang-ca-nhan/tiet-kiem/tien-gui-tiet-kiem-co-ky-han",
 			saving:  regexp.MustCompile(`12\s*tháng[^%]*?(\d+[,.]?\d*)\s*%`),
 			lending: regexp.MustCompile(`cho vay[^%]*?(\d+[,.]?\d*)\s*%`),
 		},
@@ -176,15 +179,16 @@ func fetchBankRates(ctx context.Context) []models.BankRate {
 	return out
 }
 
-// fetchCafefNews parses cafef.vn chứng khoán RSS feed.
-func fetchCafefNews(ctx context.Context) ([]models.NewsItem, error) {
-	body, err := httpGet(ctx, "https://cafef.vn/rss/chung-khoan.rss")
+// fetchNews parses VnEconomy chứng khoán RSS feed.
+func fetchNews(ctx context.Context) ([]models.NewsItem, error) {
+	body, err := httpGet(ctx, "https://vneconomy.vn/chung-khoan.rss")
 	if err != nil {
 		return nil, err
 	}
 	type RSSItem struct {
 		Title   string `xml:"title"`
 		Link    string `xml:"link"`
+		GUID    string `xml:"guid"`
 		PubDate string `xml:"pubDate"`
 	}
 	type RSS struct {
@@ -200,11 +204,18 @@ func fetchCafefNews(ctx context.Context) ([]models.NewsItem, error) {
 		if pub.IsZero() {
 			pub, _ = time.Parse(time.RFC1123, item.PubDate)
 		}
+		link := strings.TrimSpace(item.Link)
+		if link == "" {
+			link = strings.TrimSpace(item.GUID)
+		}
+		if link == "" {
+			continue
+		}
 		out = append(out, models.NewsItem{
-			Source:      "cafef",
+			Source:      "vneconomy",
 			PublishedAt: pub.UTC().Format(time.RFC3339),
 			Title:       strings.TrimSpace(item.Title),
-			URL:         strings.TrimSpace(item.Link),
+			URL:         link,
 		})
 	}
 	return out, nil
