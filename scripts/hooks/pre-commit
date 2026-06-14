@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Pre-commit: enforce ≥80% coverage per file in handlers and middleware.
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+BACKEND="$REPO_ROOT/backend"
+COVERAGE="$BACKEND/coverage.out"
+
+echo "→ Running backend coverage check..."
+
+cd "$BACKEND"
+go test ./internal/handlers/... ./internal/middleware/... \
+  -coverprofile="$COVERAGE" -covermode=atomic -count=1 2>/dev/null
+
+python3 - "$COVERAGE" <<'EOF'
+import sys
+
+coverage_file = sys.argv[1]
+covered = {}
+total = {}
+
+with open(coverage_file) as f:
+    for line in f:
+        line = line.strip()
+        if line.startswith('mode:') or not line:
+            continue
+        parts = line.rsplit(' ', 2)
+        if len(parts) != 3:
+            continue
+        loc, nstmt, count = parts
+        file = loc.split(':')[0]
+        n = int(nstmt)
+        c = int(count)
+        total[file] = total.get(file, 0) + n
+        covered[file] = covered.get(file, 0) + (n if c > 0 else 0)
+
+THRESHOLD = 80.0
+failed = []
+
+for f in sorted(total):
+    pct = 100.0 * covered[f] / total[f] if total[f] else 0
+    short = f.split('/')[-1]
+    mark = '✓' if pct >= THRESHOLD else '✗'
+    print(f'  {mark} {pct:5.1f}%  {short}')
+    if pct < THRESHOLD:
+        failed.append((short, pct))
+
+if failed:
+    print()
+    for name, pct in failed:
+        print(f'  FAIL: {name} at {pct:.1f}% (need ≥{THRESHOLD:.0f}%)')
+    sys.exit(1)
+EOF
+
+echo "✓ Coverage OK"

@@ -28,6 +28,13 @@ func ResetKeyFunc() {
 	jwksKeyFunc = nil
 }
 
+// SetKeyFunc injects a keyfunc directly. Used in tests only.
+func SetKeyFunc(kf jwt.Keyfunc) {
+	jwksMu.Lock()
+	defer jwksMu.Unlock()
+	jwksKeyFunc = kf
+}
+
 func getKeyFunc() (jwt.Keyfunc, error) {
 	jwksMu.Lock()
 	defer jwksMu.Unlock()

@@ -238,9 +238,15 @@ func TestNoteList_PinnedTrue(t *testing.T) {
 	}
 }
 
+type errNoteUpdateRepo struct{ errNoteRepo }
+
+func (m *errNoteUpdateRepo) Get(_ context.Context, id, _ string) (models.Note, error) {
+	return models.Note{ID: id}, nil
+}
+
 func TestNoteUpdate_DBError(t *testing.T) {
 	devEnv(t)
-	h := handlers.NewNoteHandler(&errNoteRepo{})
+	h := handlers.NewNoteHandler(&errNoteUpdateRepo{})
 	r := chi.NewRouter()
 	r.Put("/notes/{id}", middleware.Auth(http.HandlerFunc(h.Update)).(http.HandlerFunc))
 	body, _ := json.Marshal(map[string]any{"title": "X"})

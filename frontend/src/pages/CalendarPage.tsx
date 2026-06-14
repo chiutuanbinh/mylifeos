@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Row, Col, Card, Button, Modal, Form, Input, Switch, Spin, Tooltip, message } from 'antd'
-import { PlusOutlined, DeleteOutlined, LeftOutlined, RightOutlined, SyncOutlined } from '@ant-design/icons'
-import { getEvents, createEvent, deleteEvent, syncGoogleCalendar } from '../api/endpoints'
+import { Row, Col, Card, Button, Modal, Form, Input, Switch, Spin, Tooltip, message, Tag } from 'antd'
+import { PlusOutlined, DeleteOutlined, LeftOutlined, RightOutlined, SyncOutlined, TrophyOutlined, ThunderboltOutlined, DollarOutlined } from '@ant-design/icons'
+import { getEvents, createEvent, deleteEvent, syncGoogleCalendar, getGoals, getHabitLogs, getTransactions } from '../api/endpoints'
 import { supabase, getStoredProviderToken } from '../store/auth'
 
 export function CalendarPage() {
@@ -22,6 +22,51 @@ export function CalendarPage() {
     queryKey: ['events', year, month],
     queryFn: () => getEvents({ from: fromDate, to: toDate }),
   })
+
+  const { data: goals = [] } = useQuery({ queryKey: ['goals'], queryFn: getGoals })
+  const { data: habitLogs = [] } = useQuery({
+    queryKey: ['habitLogs', year, month],
+    queryFn: () => getHabitLogs(undefined, fromDate.slice(0, 10), toDate.slice(0, 10)),
+  })
+  const { data: transactions = [] } = useQuery({
+    queryKey: ['transactions', year, month],
+    queryFn: () => getTransactions({ from: fromDate.slice(0, 10), to: toDate.slice(0, 10) }),
+  })
+
+  // Goals with target_date in current month → deadline markers
+  const goalsByDay = goals.reduce<Record<number, typeof goals>>((acc, g) => {
+    if (!g.target_date) return acc
+    const d = new Date(g.target_date)
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const day = d.getDate()
+      acc[day] = acc[day] || []
+      acc[day].push(g)
+    }
+    return acc
+  }, {})
+
+  // Habit logs grouped by day
+  const habitLogsByDay = habitLogs.reduce<Record<number, typeof habitLogs>>((acc, log) => {
+    if (!log.logged_date || !log.done) return acc
+    const d = new Date(log.logged_date)
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const day = d.getDate()
+      acc[day] = acc[day] || []
+      acc[day].push(log)
+    }
+    return acc
+  }, {})
+
+  // Transactions grouped by day
+  const txByDay = transactions.reduce<Record<number, typeof transactions>>((acc, tx) => {
+    const d = new Date(tx.date)
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const day = d.getDate()
+      acc[day] = acc[day] || []
+      acc[day].push(tx)
+    }
+    return acc
+  }, {})
 
   // Track synced months so we don't re-sync on every render
   const syncedRef = useRef(new Set<string>())
@@ -93,6 +138,9 @@ export function CalendarPage() {
     const d = new Date(e.start_at)
     return d.getDate() === selectedDay && d.getMonth() === month
   })
+  const dayGoals = goalsByDay[selectedDay] || []
+  const dayHabitLogs = habitLogsByDay[selectedDay] || []
+  const dayTx = txByDay[selectedDay] || []
 
   const eventsByDay = events.reduce<Record<number, typeof events>>((acc, e) => {
     const d = new Date(e.start_at).getDate()
@@ -141,10 +189,18 @@ export function CalendarPage() {
                     const isToday = day === todayDate.getDate() && month === todayDate.getMonth() && year === todayDate.getFullYear()
                     const isSelected = day === selectedDay
                     const hasEvents = !!eventsByDay[day]?.length
+                    const hasGoal = !!goalsByDay[day]?.length
+                    const hasHabit = !!habitLogsByDay[day]?.length
+                    const hasTx = !!txByDay[day]?.length
                     return (
                       <div key={day} onClick={() => setSelectedDay(day)} style={{ textAlign: 'center', padding: '6px 2px', cursor: 'pointer', borderRadius: 4, background: isSelected ? '#1677ff' : isToday ? '#e6f4ff' : 'transparent', color: isSelected ? '#fff' : isToday ? '#1677ff' : '#222', fontSize: 13, position: 'relative' }}>
                         {day}
-                        {hasEvents && <div style={{ width: 4, height: 4, borderRadius: '50%', background: isSelected ? '#fff' : '#1677ff', margin: '2px auto 0' }} />}
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
+                          {hasEvents && <div style={{ width: 4, height: 4, borderRadius: '50%', background: isSelected ? '#fff' : '#1677ff' }} />}
+                          {hasGoal && <div style={{ width: 4, height: 4, borderRadius: '50%', background: isSelected ? '#fff' : '#faad14' }} />}
+                          {hasHabit && <div style={{ width: 4, height: 4, borderRadius: '50%', background: isSelected ? '#fff' : '#52c41a' }} />}
+                          {hasTx && <div style={{ width: 4, height: 4, borderRadius: '50%', background: isSelected ? '#fff' : '#eb2f96' }} />}
+                        </div>
                       </div>
                     )
                   })}
@@ -154,8 +210,11 @@ export function CalendarPage() {
           </Card>
         </Col>
         <Col span={8}>
-          <Card size="small" title={<span style={{ fontSize: 13 }}>Events — {monthName} {selectedDay}</span>}>
-            {dayEvents.length === 0 && <div style={{ color: '#bbb', textAlign: 'center', padding: 20, fontSize: 12 }}>No events this day.</div>}
+          <Card size="small" title={<span style={{ fontSize: 13 }}>{monthName} {selectedDay}</span>}>
+            {dayEvents.length === 0 && dayGoals.length === 0 && dayHabitLogs.length === 0 && dayTx.length === 0 && (
+              <div style={{ color: '#bbb', textAlign: 'center', padding: 20, fontSize: 12 }}>Nothing this day.</div>
+            )}
+
             {dayEvents.map(e => (
               <div key={e.id} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #f5f5f5', alignItems: 'flex-start' }}>
                 <div style={{ width: 3, height: 36, background: e.color, borderRadius: 2, flexShrink: 0, marginTop: 2 }} />
@@ -168,7 +227,45 @@ export function CalendarPage() {
                 )}
               </div>
             ))}
+
+            {dayGoals.map(g => (
+              <div key={g.id} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #f5f5f5', alignItems: 'center' }}>
+                <TrophyOutlined style={{ color: '#faad14', fontSize: 14, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500 }}>{g.name}</div>
+                  <div style={{ fontSize: 11, color: '#bbb' }}>Goal deadline · {g.progress}% done</div>
+                </div>
+                <Tag color={g.color} style={{ fontSize: 10 }}>{g.status}</Tag>
+              </div>
+            ))}
+
+            {dayHabitLogs.length > 0 && (
+              <div style={{ padding: '6px 0', borderBottom: '1px solid #f5f5f5' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <ThunderboltOutlined style={{ color: '#52c41a', fontSize: 14 }} />
+                  <span style={{ fontSize: 12, fontWeight: 500 }}>{dayHabitLogs.length} habit{dayHabitLogs.length > 1 ? 's' : ''} completed</span>
+                </div>
+              </div>
+            )}
+
+            {dayTx.map(tx => (
+              <div key={tx.id} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #f5f5f5', alignItems: 'center' }}>
+                <DollarOutlined style={{ color: '#eb2f96', fontSize: 14, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500 }}>{tx.description}</div>
+                  <div style={{ fontSize: 11, color: '#bbb' }}>{tx.category}</div>
+                </div>
+                <span style={{ fontSize: 12, color: tx.amount < 0 ? '#ff4d4f' : '#52c41a', fontWeight: 500 }}>{tx.amount < 0 ? '-' : '+'}${Math.abs(tx.amount).toFixed(2)}</span>
+              </div>
+            ))}
           </Card>
+
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, color: '#999' }}>
+            <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#1677ff', marginRight: 3 }} />Events</span>
+            <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#faad14', marginRight: 3 }} />Goals</span>
+            <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#52c41a', marginRight: 3 }} />Habits</span>
+            <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#eb2f96', marginRight: 3 }} />Wealth</span>
+          </div>
         </Col>
       </Row>
 

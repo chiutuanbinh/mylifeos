@@ -23,6 +23,9 @@ func (m *mockNoteRepo) Create(_ context.Context, n models.Note) (models.Note, er
 	m.created = &n
 	return n, nil
 }
+func (m *mockNoteRepo) Get(_ context.Context, id, _ string) (models.Note, error) {
+	return models.Note{ID: id, Title: "Existing Title", Content: "Existing Content", Tags: []string{"existing"}, Pinned: false}, nil
+}
 func (m *mockNoteRepo) Update(_ context.Context, n models.Note) (models.Note, error) { return n, nil }
 func (m *mockNoteRepo) Delete(_ context.Context, _, _ string) error                  { return nil }
 

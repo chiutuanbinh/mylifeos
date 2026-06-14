@@ -8,10 +8,10 @@
 
 ## Before creating a PR (REQUIRED steps in order)
 
-1. **Run backend tests** — must pass with ≥80% coverage:
+1. **Run backend tests** — must pass with ≥80% coverage **per file**:
    ```bash
    cd backend && go test ./internal/handlers/... ./internal/middleware/... -coverprofile=coverage.out -covermode=atomic
-   go tool cover -func=coverage.out | grep total
+   bash scripts/hooks/pre-commit   # checks per-file ≥80%
    ```
 
 2. **Run frontend lint + build** — must be clean:
@@ -42,7 +42,8 @@ GitHub will merge automatically when all CI checks pass.
 
 ## Test coverage rule
 
-Coverage gate is **≥80%** on `handlers` and `middleware` packages.
+Coverage gate is **≥80% per file** in `handlers` and `middleware` packages.
+Enforced by `scripts/hooks/pre-commit` (git hook) and CI.
 If you add a new handler, add corresponding tests before the PR.
 
 ## Security constraints (never violate)

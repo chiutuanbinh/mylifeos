@@ -141,6 +141,9 @@ func (m *errHabitRepo) ToggleLog(_ context.Context, _, _, _ string) (models.Habi
 func (m *errHabitRepo) Update(_ context.Context, _ models.Habit) (models.Habit, error) {
 	return models.Habit{}, errDB
 }
+func (m *errHabitRepo) GetLogsRange(_ context.Context, _, _, _ string) ([]models.HabitLog, error) {
+	return nil, errDB
+}
 func (m *errHabitRepo) GetLogRange(_ context.Context, _, _, _, _ string) ([]models.HabitLog, error) {
 	return nil, errDB
 }
@@ -205,6 +208,9 @@ func (m *errNoteRepo) List(_ context.Context, _, _, _ string, _ *bool) ([]models
 	return nil, errDB
 }
 func (m *errNoteRepo) Create(_ context.Context, _ models.Note) (models.Note, error) {
+	return models.Note{}, errDB
+}
+func (m *errNoteRepo) Get(_ context.Context, _, _ string) (models.Note, error) {
 	return models.Note{}, errDB
 }
 func (m *errNoteRepo) Update(_ context.Context, _ models.Note) (models.Note, error) {
