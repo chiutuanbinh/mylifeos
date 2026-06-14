@@ -47,7 +47,7 @@ function TransactionsTab() {
     { title: 'Description', dataIndex: 'description', ellipsis: true },
     { title: 'Category', dataIndex: 'category', width: 130, render: c => <Tag color={CAT_COLORS[c]}>{c}</Tag> },
     { title: 'Amount', dataIndex: 'amount', align: 'right', width: 100,
-      render: a => <span style={{ color: a > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>{a > 0 ? '+' : '-'}${Math.abs(a).toFixed(2)}</span> },
+      render: a => <span style={{ color: a > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>{a > 0 ? '+' : '-'}${Math.abs(a).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
     { title: '', width: 40, render: (_, row) => <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => deleteMutation.mutate(row.id)} /> },
   ]
 
@@ -55,9 +55,9 @@ function TransactionsTab() {
     <>
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
         {[
-          { label: 'Income', val: `$${totalIncome.toFixed(2)}`, color: '#52c41a' },
-          { label: 'Expenses', val: `$${totalExpenses.toFixed(2)}`, color: '#ff4d4f' },
-          { label: 'Net Cash', val: `$${(totalIncome - totalExpenses).toFixed(2)}`, color: '#1677ff' },
+          { label: 'Income', val: `$${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#52c41a' },
+          { label: 'Expenses', val: `$${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#ff4d4f' },
+          { label: 'Net Cash', val: `$${(totalIncome - totalExpenses).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#1677ff' },
         ].map((s, i) => (
           <Col span={8} key={i}>
             <Card size="small">
@@ -110,7 +110,7 @@ function BudgetsTab() {
               const pct = Math.min(Math.round(spent / b.monthly_limit * 100), 100)
               return (
                 <Col span={8} key={b.id}>
-                  <div style={{ fontSize: 12, marginBottom: 2 }}>{b.category} <span style={{ color: '#999' }}>${spent.toFixed(0)} / ${b.monthly_limit.toFixed(0)}</span></div>
+                  <div style={{ fontSize: 12, marginBottom: 2 }}>{b.category} <span style={{ color: '#999' }}>${spent.toLocaleString()} / ${b.monthly_limit.toLocaleString()}</span></div>
                   <Progress percent={pct} size="small" strokeColor={pct > 90 ? '#ff4d4f' : '#1677ff'} />
                 </Col>
               )
@@ -335,7 +335,7 @@ function TrendsTab() {
           <Card size="small">
             <div style={{ fontSize: 11, color: '#999' }}>Net Worth (30d)</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: '#1677ff' }}>
-              {latest ? `₫${(latest.net_worth / 1e6).toFixed(1)}M` : '—'}
+              {latest ? `$${latest.net_worth.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
             </div>
             {snap30 && latest && (
               <div style={{ fontSize: 11, color: Number(pctChange(latest.net_worth, snap30.net_worth)) >= 0 ? '#52c41a' : '#ff4d4f' }}>
@@ -413,7 +413,7 @@ function TrendsTab() {
         )}
       </Card>
 
-      <Card size="small" title="Finance News (cafef.vn)">
+      <Card size="small" title="Finance News (vneconomy.vn)">
         {news.length === 0 ? (
           <div style={{ color: '#bbb', fontSize: 12 }}>News fetched daily.</div>
         ) : (
@@ -435,7 +435,7 @@ function TrendsTab() {
         <Form form={form} layout="vertical"
           onFinish={values => addMutation.mutate({ date: values.date, net_worth: values.net_worth, note: values.note })}>
           <Form.Item name="date" label="Date" rules={[{ required: true }]}><Input type="date" /></Form.Item>
-          <Form.Item name="net_worth" label="Net Worth (₫)" rules={[{ required: true }]}>
+          <Form.Item name="net_worth" label="Net Worth ($)" rules={[{ required: true }]}>
             <InputNumber style={{ width: '100%' }} min={0} step={1000000} />
           </Form.Item>
           <Form.Item name="note" label="Note (optional)"><Input /></Form.Item>
