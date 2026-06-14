@@ -340,7 +340,7 @@ function LiabilitiesTab() {
   })
   const editMutation = useMutation({
     mutationFn: ({ id, values }: { id: string; values: LiabilityFormValues }) => updateLiability(id, buildLiabilityPayload(values)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['liabilities'] }); setEditItem(null) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['liabilities'] }); setEditItem(null); editForm.resetFields() },
   })
   const deleteMutation = useMutation({
     mutationFn: deleteLiability,
@@ -396,7 +396,7 @@ function LiabilitiesTab() {
       <Modal title="Add Liability" open={addOpen} onCancel={() => { setAddOpen(false); addForm.resetFields() }} footer={null}>
         {liabilityFormFields(addForm, values => addMutation.mutate(values), addMutation.isPending)}
       </Modal>
-      <Drawer title="Edit Liability" open={editItem !== null} onClose={() => setEditItem(null)} width={400} footer={null}>
+      <Drawer title="Edit Liability" open={editItem !== null} onClose={() => { setEditItem(null); editForm.resetFields() }} width={400} footer={null}>
         {editItem && liabilityFormFields(editForm, values => editMutation.mutate({ id: editItem.id, values }), editMutation.isPending)}
       </Drawer>
     </>
