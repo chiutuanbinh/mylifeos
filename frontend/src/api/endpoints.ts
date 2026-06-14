@@ -2,6 +2,7 @@ import { apiClient } from './client'
 import type {
   Transaction, Budget, Habit, HabitLog, Goal, KeyResult,
   Note, Event, Asset, UserSettings, DashboardSummary,
+  NetWorthSnapshot, BenchmarkData, BankRate, NewsItem,
 } from './types'
 
 export const getDashboardSummary = () =>
@@ -86,3 +87,18 @@ export const getSettings = () =>
   apiClient.get<UserSettings>('/settings').then(r => r.data)
 export const updateSettings = (data: Partial<UserSettings>) =>
   apiClient.put<UserSettings>('/settings', data).then(r => r.data)
+
+export const getNetWorthSnapshots = () =>
+  apiClient.get<NetWorthSnapshot[]>('/net-worth-snapshots').then(r => r.data)
+
+export const addNetWorthSnapshot = (data: { date: string; net_worth: number; note?: string }) =>
+  apiClient.post<NetWorthSnapshot>('/net-worth-snapshots', data).then(r => r.data)
+
+export const getBenchmarks = (sources: string[], from: string, to: string) =>
+  apiClient.get<BenchmarkData[]>('/benchmarks', { params: { sources: sources.join(','), from, to } }).then(r => r.data)
+
+export const getBankRates = () =>
+  apiClient.get<BankRate[]>('/bank-rates').then(r => r.data)
+
+export const getNews = () =>
+  apiClient.get<NewsItem[]>('/news').then(r => r.data)
