@@ -104,3 +104,35 @@ export interface DashboardSummary {
   budget_spent: number
   recent_transactions: Transaction[]
 }
+
+export interface NetWorthSnapshot {
+  id: string
+  user_id: string
+  snapshot_date: string
+  assets_value: number
+  cash_position: number
+  net_worth: number
+  note: string
+}
+
+export interface BenchmarkData {
+  id: string
+  source: string
+  date: string
+  value: number
+}
+
+export interface BankRate {
+  bank: string
+  saving_12m: number
+  lending: number
+  fetched_date: string
+}
+
+export interface NewsItem {
+  id: string
+  source: string
+  published_at: string
+  title: string
+  url: string
+}

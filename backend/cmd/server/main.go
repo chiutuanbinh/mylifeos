@@ -16,6 +16,7 @@ import (
 	"github.com/chiutuanbinh/mylifeos/backend/internal/middleware"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/migrate"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/repo"
+	"github.com/chiutuanbinh/mylifeos/backend/internal/scraper"
 )
 
 func main() {
@@ -50,6 +51,8 @@ func main() {
 	gcalHandler    := handlers.NewGoogleCalendarHandler(eventRepo)
 	assetHandler   := handlers.NewAssetHandler(repo.NewAssetRepo(db))
 	settingHandler := handlers.NewSettingsHandler(repo.NewSettingsRepo(db))
+	trendsRepo    := repo.NewTrendsRepo(db)
+	trendsHandler := handlers.NewTrendsHandler(trendsRepo, repo.NewAssetRepo(db))
 
 	r := chi.NewRouter()
 	r.Use(chimw.Logger)
@@ -111,7 +114,19 @@ func main() {
 
 		r.Get("/settings",  settingHandler.Get)
 		r.Put("/settings",  settingHandler.Update)
+
+		r.Get("/net-worth-snapshots",  trendsHandler.ListSnapshots)
+		r.Post("/net-worth-snapshots", trendsHandler.AddSnapshot)
+		r.Get("/benchmarks",           trendsHandler.ListBenchmarks)
+		r.Get("/bank-rates",           trendsHandler.ListBankRates)
+		r.Get("/news",                 trendsHandler.ListNews)
+		r.Post("/scrape",              trendsHandler.TriggerScrape)
 	})
+
+	go func() {
+		ctx := context.Background()
+		scraper.Run(ctx, trendsRepo)
+	}()
 
 	log.Printf("server listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
