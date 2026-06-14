@@ -6,8 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { WealthPage } from './pages/WealthPage'
-import { HealthPage } from './pages/HealthPage'
-import { GoalsPage } from './pages/GoalsPage'
+import { ObjectivesPage } from './pages/ObjectivesPage'
 import { NotesPage } from './pages/NotesPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -30,8 +29,7 @@ export default function App() {
                 <Routes>
                   <Route path="/"          element={<DashboardPage />} />
                   <Route path="/wealth"    element={<WealthPage />} />
-                  <Route path="/health"    element={<HealthPage />} />
-                  <Route path="/goals"     element={<GoalsPage />} />
+                  <Route path="/objectives" element={<ObjectivesPage />} />
                   <Route path="/notes"     element={<NotesPage />} />
                   <Route path="/calendar"  element={<CalendarPage />} />
                   <Route path="/settings"  element={<SettingsPage />} />

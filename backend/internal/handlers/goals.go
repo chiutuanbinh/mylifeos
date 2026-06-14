@@ -91,39 +91,58 @@ func (h *GoalHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *GoalHandler) AddKeyResult(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.GetUserID(r)
-	var kr models.KeyResult
-	if err := json.NewDecoder(r.Body).Decode(&kr); err != nil {
-		http.Error(w, `{"error":"bad request"}`, 400)
+	goalID := chi.URLParam(r, "id")
+	var body struct {
+		Description  string  `json:"description"`
+		Recurring    bool    `json:"recurring"`
+		ReminderTime *string `json:"reminder_time"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Description == "" {
+		http.Error(w, `{"error":"description required"}`, 400)
 		return
 	}
-	kr.GoalID = chi.URLParam(r, "id")
-	kr.UserID = uid
-	out, err := h.repo.AddKeyResult(r.Context(), kr)
+	kr, err := h.repo.AddKeyResult(r.Context(), models.KeyResult{
+		GoalID:       goalID,
+		UserID:       uid,
+		Description:  body.Description,
+		Recurring:    body.Recurring,
+		ReminderTime: body.ReminderTime,
+	})
 	if err != nil {
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(201)
-	json.NewEncoder(w).Encode(out)
+	json.NewEncoder(w).Encode(kr)
 }
 
 func (h *GoalHandler) UpdateKeyResult(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.GetUserID(r)
-	var kr models.KeyResult
-	if err := json.NewDecoder(r.Body).Decode(&kr); err != nil {
+	var body struct {
+		Description  string  `json:"description"`
+		Done         bool    `json:"done"`
+		Recurring    bool    `json:"recurring"`
+		ReminderTime *string `json:"reminder_time"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, `{"error":"bad request"}`, 400)
 		return
 	}
-	kr.ID = chi.URLParam(r, "kr_id")
-	kr.UserID = uid
-	out, err := h.repo.UpdateKeyResult(r.Context(), kr)
+	kr, err := h.repo.UpdateKeyResult(r.Context(), models.KeyResult{
+		ID:           chi.URLParam(r, "kr_id"),
+		UserID:       uid,
+		Description:  body.Description,
+		Done:         body.Done,
+		Recurring:    body.Recurring,
+		ReminderTime: body.ReminderTime,
+	})
 	if err != nil {
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(out)
+	json.NewEncoder(w).Encode(kr)
 }
 
 func (h *GoalHandler) DeleteKeyResult(w http.ResponseWriter, r *http.Request) {

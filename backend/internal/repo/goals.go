@@ -27,16 +27,23 @@ func nullDateString(t *time.Time) *string {
 }
 
 func computeProgress(krs []models.KeyResult) int {
-	if len(krs) == 0 {
+	// Only one-time KRs count toward goal progress
+	oneTime := make([]models.KeyResult, 0, len(krs))
+	for _, kr := range krs {
+		if !kr.Recurring {
+			oneTime = append(oneTime, kr)
+		}
+	}
+	if len(oneTime) == 0 {
 		return 0
 	}
 	done := 0
-	for _, kr := range krs {
+	for _, kr := range oneTime {
 		if kr.Done {
 			done++
 		}
 	}
-	return int(float64(done) / float64(len(krs)) * 100)
+	return int(float64(done) / float64(len(oneTime)) * 100)
 }
 
 type pgGoalRepo struct{ db *pgxpool.Pool }
@@ -68,14 +75,16 @@ func (r *pgGoalRepo) List(ctx context.Context, userID string) ([]models.Goal, er
 
 	for i, g := range goals {
 		krows, err := r.db.Query(ctx,
-			`SELECT id, goal_id, user_id, description, done FROM key_results WHERE goal_id = $1`, g.ID)
+			`SELECT id, goal_id, user_id, description, done, recurring,
+			        TO_CHAR(reminder_time, 'HH24:MI') AS reminder_time
+			 FROM key_results WHERE goal_id = $1 ORDER BY created_at`, g.ID)
 		if err != nil {
 			return nil, err
 		}
 		var krs []models.KeyResult
 		for krows.Next() {
 			var kr models.KeyResult
-			krows.Scan(&kr.ID, &kr.GoalID, &kr.UserID, &kr.Description, &kr.Done)
+			krows.Scan(&kr.ID, &kr.GoalID, &kr.UserID, &kr.Description, &kr.Done, &kr.Recurring, &kr.ReminderTime)
 			krs = append(krs, kr)
 		}
 		krows.Close()
@@ -127,24 +136,35 @@ func (r *pgGoalRepo) Delete(ctx context.Context, id, userID string) error {
 }
 
 func (r *pgGoalRepo) AddKeyResult(ctx context.Context, kr models.KeyResult) (models.KeyResult, error) {
+	var reminderArg interface{} = nil
+	if kr.ReminderTime != nil && *kr.ReminderTime != "" {
+		reminderArg = *kr.ReminderTime
+	}
 	row := r.db.QueryRow(ctx,
-		`INSERT INTO key_results (goal_id, user_id, description, done)
-		 VALUES ($1, $2, $3, false)
-		 RETURNING id, goal_id, user_id, description, done`,
-		kr.GoalID, kr.UserID, kr.Description)
+		`INSERT INTO key_results (goal_id, user_id, description, done, recurring, reminder_time)
+		 VALUES ($1, $2, $3, FALSE, $4, $5::time)
+		 RETURNING id, goal_id, user_id, description, done, recurring,
+		           TO_CHAR(reminder_time, 'HH24:MI')`,
+		kr.GoalID, kr.UserID, kr.Description, kr.Recurring, reminderArg)
 	var out models.KeyResult
-	err := row.Scan(&out.ID, &out.GoalID, &out.UserID, &out.Description, &out.Done)
+	err := row.Scan(&out.ID, &out.GoalID, &out.UserID, &out.Description, &out.Done, &out.Recurring, &out.ReminderTime)
 	return out, err
 }
 
 func (r *pgGoalRepo) UpdateKeyResult(ctx context.Context, kr models.KeyResult) (models.KeyResult, error) {
+	var reminderArg interface{} = nil
+	if kr.ReminderTime != nil && *kr.ReminderTime != "" {
+		reminderArg = *kr.ReminderTime
+	}
 	row := r.db.QueryRow(ctx,
-		`UPDATE key_results SET description=$1, done=$2
-		 WHERE id=$3 AND user_id=$4
-		 RETURNING id, goal_id, user_id, description, done`,
-		kr.Description, kr.Done, kr.ID, kr.UserID)
+		`UPDATE key_results
+		 SET description=$1, done=$2, recurring=$3, reminder_time=$4::time
+		 WHERE id=$5 AND user_id=$6
+		 RETURNING id, goal_id, user_id, description, done, recurring,
+		           TO_CHAR(reminder_time, 'HH24:MI')`,
+		kr.Description, kr.Done, kr.Recurring, reminderArg, kr.ID, kr.UserID)
 	var out models.KeyResult
-	err := row.Scan(&out.ID, &out.GoalID, &out.UserID, &out.Description, &out.Done)
+	err := row.Scan(&out.ID, &out.GoalID, &out.UserID, &out.Description, &out.Done, &out.Recurring, &out.ReminderTime)
 	return out, err
 }
 

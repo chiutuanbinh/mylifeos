@@ -352,22 +352,6 @@ func TestEventUpdate_DBError(t *testing.T) {
 	}
 }
 
-// ── Habit: Create DB error ───────────────────────────────────────────────────
-
-func TestHabitCreate_DBError(t *testing.T) {
-	devEnv(t)
-	h := handlers.NewHabitHandler(&errHabitRepo{})
-	handler := middleware.Auth(http.HandlerFunc(h.Create))
-	body, _ := json.Marshal(map[string]any{"name": "X", "icon": "🏃"})
-	req := httptest.NewRequest("POST", "/api/v1/habits", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", w.Code)
-	}
-}
-
 // ── Asset: Create DB error ───────────────────────────────────────────────────
 
 func TestAssetCreate_DBError(t *testing.T) {

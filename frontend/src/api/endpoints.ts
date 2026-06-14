@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 import type {
-  Transaction, Budget, Habit, HabitLog, Goal, KeyResult,
+  Transaction, Budget, Goal, KeyResult, KRLog,
   Note, Event, Asset, UserSettings, DashboardSummary,
   NetWorthSnapshot, BenchmarkData, BankRate, NewsItem,
 } from './types'
@@ -20,20 +20,12 @@ export const getBudgets = () =>
 export const upsertBudget = (category: string, monthly_limit: number) =>
   apiClient.put<Budget>(`/budgets/${category}`, { monthly_limit }).then(r => r.data)
 
-export const getHabits = () =>
-  apiClient.get<Habit[]>('/habits').then(r => r.data)
-export const createHabit = (data: { name: string; icon: string }) =>
-  apiClient.post<Habit>('/habits', data).then(r => r.data)
-export const deleteHabit = (id: string) =>
-  apiClient.delete(`/habits/${id}`)
-export const updateHabit = (id: string, data: { name: string; icon: string }) =>
-  apiClient.put<Habit>(`/habits/${id}`, data).then(r => r.data)
-export const getHabitLogRange = (habitId: string, from: string, to: string) =>
-  apiClient.get<HabitLog[]>(`/habits/${habitId}/logs`, { params: { from, to } }).then(r => r.data)
-export const getHabitLogs = (date?: string, from?: string, to?: string) =>
-  apiClient.get<HabitLog[]>('/habits/logs', { params: { date, from, to } }).then(r => r.data)
-export const toggleHabitLog = (habitId: string, date?: string) =>
-  apiClient.post<HabitLog>(`/habits/${habitId}/log`, { date }).then(r => r.data)
+export const getKRLogs = (date?: string) =>
+  apiClient.get<KRLog[]>('/kr-logs', { params: { date } }).then(r => r.data)
+export const getKRLogRange = (krId: string, from: string, to: string) =>
+  apiClient.get<KRLog[]>(`/key-results/${krId}/logs`, { params: { from, to } }).then(r => r.data)
+export const toggleKRLog = (krId: string, date?: string) =>
+  apiClient.post<KRLog>(`/key-results/${krId}/log`, { date }).then(r => r.data)
 
 export const getGoals = () =>
   apiClient.get<Goal[]>('/goals').then(r => r.data)
@@ -43,8 +35,12 @@ export const updateGoal = (id: string, data: Partial<Goal>) =>
   apiClient.patch<Goal>(`/goals/${id}`, data).then(r => r.data)
 export const deleteGoal = (id: string) =>
   apiClient.delete(`/goals/${id}`)
-export const addKeyResult = (goalId: string, description: string) =>
-  apiClient.post<KeyResult>(`/goals/${goalId}/key-results`, { description }).then(r => r.data)
+export const addKeyResult = (goalId: string, description: string, recurring = false, reminderTime?: string) =>
+  apiClient.post<KeyResult>(`/goals/${goalId}/key-results`, {
+    description,
+    recurring,
+    reminder_time: reminderTime ?? null,
+  }).then(r => r.data)
 export const updateKeyResult = (goalId: string, krId: string, data: Partial<KeyResult>) =>
   apiClient.patch<KeyResult>(`/goals/${goalId}/key-results/${krId}`, data).then(r => r.data)
 export const deleteKeyResult = (goalId: string, krId: string) =>

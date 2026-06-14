@@ -43,7 +43,7 @@ func main() {
 
 	dashHandler    := handlers.NewDashboardHandler(repo.NewDashboardRepo(db))
 	txHandler      := handlers.NewTransactionHandler(repo.NewTransactionRepo(db))
-	habitHandler   := handlers.NewHabitHandler(repo.NewHabitRepo(db))
+	krLogHandler   := handlers.NewKRLogHandler(repo.NewKRLogRepo(db))
 	goalHandler    := handlers.NewGoalHandler(repo.NewGoalRepo(db))
 	noteHandler    := handlers.NewNoteHandler(repo.NewNoteRepo(db))
 	eventRepo      := repo.NewEventRepo(db)
@@ -80,13 +80,9 @@ func main() {
 		r.Get("/budgets",              txHandler.ListBudgets)
 		r.Put("/budgets/{category}",   txHandler.UpsertBudget)
 
-		r.Get("/habits",           habitHandler.List)
-		r.Post("/habits",           habitHandler.Create)
-		r.Put("/habits/{id}",      habitHandler.Update)
-		r.Delete("/habits/{id}",   habitHandler.Delete)
-		r.Get("/habits/logs",      habitHandler.GetLogs)
-		r.Get("/habits/{id}/logs", habitHandler.GetLogRange)
-		r.Post("/habits/{id}/log", habitHandler.ToggleLog)
+		r.Get("/kr-logs",                      krLogHandler.GetLogs)
+		r.Get("/key-results/{id}/logs",        krLogHandler.GetLogRange)
+		r.Post("/key-results/{id}/log",        krLogHandler.ToggleLog)
 
 		r.Get("/goals",                              goalHandler.List)
 		r.Post("/goals",                              goalHandler.Create)

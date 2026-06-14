@@ -16,27 +16,21 @@ export interface Budget {
   created_at: string
 }
 
-export interface Habit {
-  id: string
-  user_id: string
-  name: string
-  icon: string
-  created_at: string
-}
-
-export interface HabitLog {
-  id: string
-  habit_id: string
-  user_id: string
-  logged_date: string
-  done: boolean
-}
-
 export interface KeyResult {
   id: string
   goal_id: string
   user_id: string
   description: string
+  done: boolean
+  recurring: boolean
+  reminder_time?: string | null
+}
+
+export interface KRLog {
+  id: string
+  kr_id: string
+  user_id: string
+  logged_date: string
   done: boolean
 }
 
