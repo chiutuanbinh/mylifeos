@@ -16,27 +16,21 @@ export interface Budget {
   created_at: string
 }
 
-export interface Habit {
-  id: string
-  user_id: string
-  name: string
-  icon: string
-  created_at: string
-}
-
-export interface HabitLog {
-  id: string
-  habit_id: string
-  user_id: string
-  logged_date: string
-  done: boolean
-}
-
 export interface KeyResult {
   id: string
   goal_id: string
   user_id: string
   description: string
+  done: boolean
+  recurring: boolean
+  reminder_time?: string | null
+}
+
+export interface KRLog {
+  id: string
+  kr_id: string
+  user_id: string
+  logged_date: string
   done: boolean
 }
 
@@ -103,4 +97,36 @@ export interface DashboardSummary {
   budget_total: number
   budget_spent: number
   recent_transactions: Transaction[]
+}
+
+export interface NetWorthSnapshot {
+  id: string
+  user_id: string
+  snapshot_date: string
+  assets_value: number
+  cash_position: number
+  net_worth: number
+  note: string
+}
+
+export interface BenchmarkData {
+  id: string
+  source: string
+  date: string
+  value: number
+}
+
+export interface BankRate {
+  bank: string
+  saving_12m: number
+  lending: number
+  fetched_date: string
+}
+
+export interface NewsItem {
+  id: string
+  source: string
+  published_at: string
+  title: string
+  url: string
 }

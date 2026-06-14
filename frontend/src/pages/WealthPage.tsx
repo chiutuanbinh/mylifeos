@@ -5,14 +5,17 @@ import {
   InputNumber, Modal, Progress, Spin, Tooltip, Drawer,
 } from 'antd'
 import type { FormInstance } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, EditOutlined, LineChartOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import {
   getTransactions, createTransaction, deleteTransaction,
   getBudgets, upsertBudget,
   getAssets, createAsset, updateAsset, deleteAsset,
+  getNetWorthSnapshots, addNetWorthSnapshot,
+  getBenchmarks, getBankRates, getNews,
 } from '../api/endpoints'
-import type { Transaction, Asset } from '../api/types'
+import type { Transaction, Asset, BankRate, NewsItem } from '../api/types'
+import { NetWorthChart } from '../components/NetWorthChart'
 
 const CATEGORIES = ['Food', 'Income', 'Entertainment', 'Health', 'Tech', 'Auto', 'Utilities', 'Shopping']
 const CAT_COLORS: Record<string, string> = {
@@ -266,6 +269,183 @@ function AssetsTab() {
   )
 }
 
+const BANK_DISPLAY: Record<string, string> = {
+  vcb: 'Vietcombank', bidv: 'BIDV', agribank: 'Agribank', tcb: 'Techcombank',
+}
+
+function TrendsTab() {
+  const [backfillOpen, setBackfillOpen] = useState(false)
+  const [form] = Form.useForm()
+  const qc = useQueryClient()
+
+  const now = new Date()
+  const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().split('T')[0]
+  const todayStr = now.toISOString().split('T')[0]
+
+  const { data: snapshots = [] } = useQuery({
+    queryKey: ['net-worth-snapshots'],
+    queryFn: getNetWorthSnapshots,
+  })
+
+  const { data: benchmarks = [] } = useQuery({
+    queryKey: ['benchmarks', yearAgo, todayStr],
+    queryFn: () => getBenchmarks(['vn_index', 'sjc_gold', 'gso_cpi'], yearAgo, todayStr),
+  })
+
+  const { data: bankRates = [] } = useQuery({
+    queryKey: ['bank-rates'],
+    queryFn: getBankRates,
+  })
+
+  const { data: news = [] } = useQuery({
+    queryKey: ['news'],
+    queryFn: getNews,
+  })
+
+  const addMutation = useMutation({
+    mutationFn: addNetWorthSnapshot,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['net-worth-snapshots'] })
+      setBackfillOpen(false)
+      form.resetFields()
+    },
+  })
+
+  const latest = snapshots[snapshots.length - 1]
+  const thirtyDaysAgo = new Date(now)
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const cutoff30 = thirtyDaysAgo.toISOString().split('T')[0]
+  const snap30 = snapshots.filter(s => s.snapshot_date <= cutoff30).slice(-1)[0]
+
+  const pctChange = (curr: number, prev?: number) =>
+    prev && prev !== 0 ? ((curr - prev) / prev * 100).toFixed(1) : null
+
+  const latestBenchmark = (source: string) => {
+    const pts = benchmarks.filter(b => b.source === source).sort((a, b) => a.date.localeCompare(b.date))
+    return { latest: pts[pts.length - 1], oldest: pts[0] }
+  }
+
+  const vnidx = latestBenchmark('vn_index')
+  const gold = latestBenchmark('sjc_gold')
+
+  return (
+    <div>
+      <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+        <Col span={6}>
+          <Card size="small">
+            <div style={{ fontSize: 11, color: '#999' }}>Net Worth (30d)</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#1677ff' }}>
+              {latest ? `₫${(latest.net_worth / 1e6).toFixed(1)}M` : '—'}
+            </div>
+            {snap30 && latest && (
+              <div style={{ fontSize: 11, color: Number(pctChange(latest.net_worth, snap30.net_worth)) >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                {pctChange(latest.net_worth, snap30.net_worth)}% vs 30d ago
+              </div>
+            )}
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card size="small">
+            <div style={{ fontSize: 11, color: '#999' }}>VN-Index (1Y)</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>
+              {vnidx.latest ? vnidx.latest.value.toFixed(0) : '—'}
+            </div>
+            {vnidx.oldest && vnidx.latest && (
+              <div style={{ fontSize: 11, color: Number(pctChange(vnidx.latest.value, vnidx.oldest.value)) >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                {pctChange(vnidx.latest.value, vnidx.oldest.value)}% vs 1Y ago
+              </div>
+            )}
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card size="small">
+            <div style={{ fontSize: 11, color: '#999' }}>SJC Gold (1Y)</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>
+              {gold.latest ? `${(gold.latest.value / 1e6).toFixed(1)}M/lượng` : '—'}
+            </div>
+            {gold.oldest && gold.latest && (
+              <div style={{ fontSize: 11, color: Number(pctChange(gold.latest.value, gold.oldest.value)) >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                {pctChange(gold.latest.value, gold.oldest.value)}% vs 1Y ago
+              </div>
+            )}
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card size="small" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Button size="small" icon={<PlusOutlined />} onClick={() => setBackfillOpen(true)}>
+              Add past data point
+            </Button>
+          </Card>
+        </Col>
+      </Row>
+
+      <Card size="small" title="Net Worth Trend vs Benchmarks (% change from start)" style={{ marginBottom: 16 }}>
+        <NetWorthChart snapshots={snapshots} benchmarks={benchmarks} />
+      </Card>
+
+      <Card size="small" title="Bank Interest Rates" style={{ marginBottom: 16 }}>
+        {bankRates.length === 0 ? (
+          <div style={{ color: '#bbb', fontSize: 12 }}>Rates fetched daily. Check back tomorrow.</div>
+        ) : (
+          <>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#999', fontWeight: 500 }}>Bank</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'right', color: '#999', fontWeight: 500 }}>Saving 12m</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'right', color: '#999', fontWeight: 500 }}>Lending</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bankRates.map((r: BankRate) => (
+                  <tr key={r.bank} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                    <td style={{ padding: '6px 8px' }}>{BANK_DISPLAY[r.bank] ?? r.bank}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#52c41a' }}>{r.saving_12m}%</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#ff4d4f' }}>{r.lending}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {bankRates[0] && (
+              <div style={{ fontSize: 11, color: '#bbb', marginTop: 6 }}>Updated: {bankRates[0].fetched_date}</div>
+            )}
+          </>
+        )}
+      </Card>
+
+      <Card size="small" title="Finance News (cafef.vn)">
+        {news.length === 0 ? (
+          <div style={{ color: '#bbb', fontSize: 12 }}>News fetched daily.</div>
+        ) : (
+          news.slice(0, 10).map((n: NewsItem) => (
+            <div key={n.id} style={{ padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
+              <a href={n.url} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 13, color: '#1677ff', textDecoration: 'none' }}>
+                {n.title}
+              </a>
+              <div style={{ fontSize: 11, color: '#bbb', marginTop: 2 }}>
+                {new Date(n.published_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          ))
+        )}
+      </Card>
+
+      <Modal title="Add Past Net Worth" open={backfillOpen} onCancel={() => setBackfillOpen(false)} footer={null}>
+        <Form form={form} layout="vertical"
+          onFinish={values => addMutation.mutate({ date: values.date, net_worth: values.net_worth, note: values.note })}>
+          <Form.Item name="date" label="Date" rules={[{ required: true }]}><Input type="date" /></Form.Item>
+          <Form.Item name="net_worth" label="Net Worth (₫)" rules={[{ required: true }]}>
+            <InputNumber style={{ width: '100%' }} min={0} step={1000000} />
+          </Form.Item>
+          <Form.Item name="note" label="Note (optional)"><Input /></Form.Item>
+          <Button type="primary" htmlType="submit" loading={addMutation.isPending} block>Save</Button>
+        </Form>
+      </Modal>
+    </div>
+  )
+}
+
 export function WealthPage() {
   return (
     <Tabs
@@ -274,6 +454,7 @@ export function WealthPage() {
         { key: 'transactions', label: 'Transactions', children: <TransactionsTab /> },
         { key: 'budgets',      label: 'Budgets',      children: <BudgetsTab /> },
         { key: 'assets',       label: 'Assets',       children: <AssetsTab /> },
+        { key: 'trends', label: <><LineChartOutlined /> Trends</>, children: <TrendsTab /> },
       ]}
     />
   )

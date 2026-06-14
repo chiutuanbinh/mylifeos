@@ -20,22 +20,6 @@ type Budget struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-type Habit struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	Name      string    `json:"name"`
-	Icon      string    `json:"icon"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type HabitLog struct {
-	ID         string `json:"id"`
-	HabitID    string `json:"habit_id"`
-	UserID     string `json:"user_id"`
-	LoggedDate string `json:"logged_date"`
-	Done       bool   `json:"done"`
-}
-
 type Goal struct {
 	ID          string      `json:"id"`
 	UserID      string      `json:"user_id"`
@@ -50,11 +34,21 @@ type Goal struct {
 }
 
 type KeyResult struct {
-	ID          string `json:"id"`
-	GoalID      string `json:"goal_id"`
-	UserID      string `json:"user_id"`
-	Description string `json:"description"`
-	Done        bool   `json:"done"`
+	ID           string  `json:"id"`
+	GoalID       string  `json:"goal_id"`
+	UserID       string  `json:"user_id"`
+	Description  string  `json:"description"`
+	Done         bool    `json:"done"`
+	Recurring    bool    `json:"recurring"`
+	ReminderTime *string `json:"reminder_time,omitempty"`
+}
+
+type KRLog struct {
+	ID         string `json:"id"`
+	KRID       string `json:"kr_id"`
+	UserID     string `json:"user_id"`
+	LoggedDate string `json:"logged_date"`
+	Done       bool   `json:"done"`
 }
 
 type Note struct {
@@ -105,6 +99,29 @@ type NetWorthSnapshot struct {
 	AssetsValue  float64 `json:"assets_value"`
 	CashPosition float64 `json:"cash_position"`
 	NetWorth     float64 `json:"net_worth"`
+	Note         string  `json:"note"`
+}
+
+type BenchmarkData struct {
+	ID     string  `json:"id"`
+	Source string  `json:"source"`
+	Date   string  `json:"date"`
+	Value  float64 `json:"value"`
+}
+
+type BankRate struct {
+	Bank        string  `json:"bank"`
+	Saving12m   float64 `json:"saving_12m"`
+	Lending     float64 `json:"lending"`
+	FetchedDate string  `json:"fetched_date"`
+}
+
+type NewsItem struct {
+	ID          string `json:"id"`
+	Source      string `json:"source"`
+	PublishedAt string `json:"published_at"`
+	Title       string `json:"title"`
+	URL         string `json:"url"`
 }
 
 type DashboardSummary struct {

@@ -23,10 +23,10 @@ func (r *pgDashboardRepo) Summary(ctx context.Context, userID string) (models.Da
 
 	// Habits
 	row := r.db.QueryRow(ctx,
-		`SELECT COUNT(*), COALESCE(SUM(CASE WHEN hl.done THEN 1 ELSE 0 END), 0)
-		 FROM habits h
-		 LEFT JOIN habit_logs hl ON hl.habit_id = h.id AND hl.logged_date = CURRENT_DATE
-		 WHERE h.user_id = $1`, userID)
+		`SELECT COUNT(*), COALESCE(SUM(CASE WHEN kl.done THEN 1 ELSE 0 END), 0)
+		 FROM key_results kr
+		 LEFT JOIN kr_logs kl ON kl.kr_id = kr.id AND kl.logged_date = CURRENT_DATE
+		 WHERE kr.user_id = $1 AND kr.recurring = TRUE`, userID)
 	row.Scan(&s.HabitsTotal, &s.HabitsDoneToday)
 
 	// Goals avg progress computed from KRs (active only)
