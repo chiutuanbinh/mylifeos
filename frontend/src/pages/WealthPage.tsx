@@ -310,15 +310,17 @@ function TrendsTab() {
     queryFn: () => getBenchmarks(['vn_index', 'sjc_gold', 'gso_cpi'], yearAgo, todayStr),
   })
 
-  const { data: bankRates = [] } = useQuery({
+  const { data: bankRatesRaw } = useQuery({
     queryKey: ['bank-rates'],
     queryFn: getBankRates,
   })
+  const bankRates: BankRate[] = bankRatesRaw ?? []
 
-  const { data: news = [] } = useQuery({
+  const { data: newsRaw } = useQuery({
     queryKey: ['news'],
     queryFn: getNews,
   })
+  const news: NewsItem[] = newsRaw ?? []
 
   const addMutation = useMutation({
     mutationFn: addNetWorthSnapshot,

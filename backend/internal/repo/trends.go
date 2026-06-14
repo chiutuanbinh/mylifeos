@@ -175,6 +175,9 @@ func (r *pgTrendsRepo) LatestBankRates(ctx context.Context) ([]models.BankRate, 
 			out = append(out, *r)
 		}
 	}
+	if out == nil {
+		out = []models.BankRate{}
+	}
 	return out, nil
 }
 
