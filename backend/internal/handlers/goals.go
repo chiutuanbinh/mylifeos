@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -18,6 +19,7 @@ func (h *GoalHandler) List(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.GetUserID(r)
 	goals, err := h.repo.List(r.Context(), uid)
 	if err != nil {
+		log.Printf("goals.List error: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
@@ -46,6 +48,7 @@ func (h *GoalHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := h.repo.Create(r.Context(), g)
 	if err != nil {
+		log.Printf("goals.Create error: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
@@ -73,6 +76,7 @@ func (h *GoalHandler) Update(w http.ResponseWriter, r *http.Request) {
 	g.UserID = uid
 	out, err := h.repo.Update(r.Context(), g)
 	if err != nil {
+		log.Printf("goals.Update error: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
@@ -83,6 +87,7 @@ func (h *GoalHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *GoalHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.GetUserID(r)
 	if err := h.repo.Delete(r.Context(), chi.URLParam(r, "id"), uid); err != nil {
+		log.Printf("goals.Delete error: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
@@ -109,6 +114,7 @@ func (h *GoalHandler) AddKeyResult(w http.ResponseWriter, r *http.Request) {
 		ReminderTime: body.ReminderTime,
 	})
 	if err != nil {
+		log.Printf("goals.AddKeyResult error: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
@@ -138,6 +144,7 @@ func (h *GoalHandler) UpdateKeyResult(w http.ResponseWriter, r *http.Request) {
 		ReminderTime: body.ReminderTime,
 	})
 	if err != nil {
+		log.Printf("goals.UpdateKeyResult error: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
@@ -148,6 +155,7 @@ func (h *GoalHandler) UpdateKeyResult(w http.ResponseWriter, r *http.Request) {
 func (h *GoalHandler) DeleteKeyResult(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.GetUserID(r)
 	if err := h.repo.DeleteKeyResult(r.Context(), chi.URLParam(r, "kr_id"), uid); err != nil {
+		log.Printf("goals.DeleteKeyResult error: %v", err)
 		http.Error(w, `{"error":"internal"}`, 500)
 		return
 	}
