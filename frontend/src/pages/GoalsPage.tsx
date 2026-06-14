@@ -93,7 +93,7 @@ export function GoalsPage() {
             >
               <Progress percent={g.progress} strokeColor={g.color} size="small" style={{ marginBottom: 8 }} />
               <div style={{ fontSize: 11, color: '#999', marginBottom: g.description ? 6 : 0 }}>
-                {g.key_results.filter(kr => kr.done).length}/{g.key_results.length} key results · {g.progress}%
+                {(g.key_results ?? []).filter(kr => kr.done).length}/{(g.key_results ?? []).length} key results · {g.progress}%
               </div>
               {g.description && <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>{g.description}</div>}
 
