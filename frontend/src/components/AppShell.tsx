@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu, Avatar, Badge, Space, Button, Breadcrumb, Typography } from 'antd'
 import {
-  DashboardOutlined, DollarOutlined, HeartOutlined, TrophyOutlined,
+  DashboardOutlined, DollarOutlined, TrophyOutlined,
   FileTextOutlined, CalendarOutlined, SettingOutlined,
   BellOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined,
 } from '@ant-design/icons'
@@ -12,8 +12,7 @@ const NAV = [
   { key: '/',         icon: <DashboardOutlined />, label: 'Dashboard' },
   { type: 'divider' as const },
   { key: '/wealth',   icon: <DollarOutlined />,   label: 'Wealth' },
-  { key: '/health',   icon: <HeartOutlined />,    label: 'Health & Habits' },
-  { key: '/goals',    icon: <TrophyOutlined />,   label: 'Goals & OKRs' },
+  { key: '/objectives', icon: <TrophyOutlined />, label: 'Objectives' },
   { key: '/notes',    icon: <FileTextOutlined />, label: 'Notes' },
   { key: '/calendar', icon: <CalendarOutlined />, label: 'Calendar' },
   { type: 'divider' as const },
@@ -23,8 +22,7 @@ const NAV = [
 const TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/wealth': 'Wealth',
-  '/health': 'Health & Habits',
-  '/goals': 'Goals & OKRs',
+  '/objectives': 'Objectives',
   '/notes': 'Notes & Knowledge',
   '/calendar': 'Calendar & Schedule',
   '/settings': 'Settings',
