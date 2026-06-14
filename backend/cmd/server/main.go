@@ -49,10 +49,11 @@ func main() {
 	eventRepo      := repo.NewEventRepo(db)
 	eventHandler   := handlers.NewEventHandler(eventRepo)
 	gcalHandler    := handlers.NewGoogleCalendarHandler(eventRepo)
-	assetHandler   := handlers.NewAssetHandler(repo.NewAssetRepo(db))
+	assetRepo      := repo.NewAssetRepo(db)
+	assetHandler   := handlers.NewAssetHandler(assetRepo)
 	settingHandler := handlers.NewSettingsHandler(repo.NewSettingsRepo(db))
-	trendsRepo    := repo.NewTrendsRepo(db)
-	trendsHandler := handlers.NewTrendsHandler(trendsRepo, repo.NewAssetRepo(db))
+	trendsRepo     := repo.NewTrendsRepo(db)
+	trendsHandler  := handlers.NewTrendsHandler(trendsRepo, assetRepo)
 
 	r := chi.NewRouter()
 	r.Use(chimw.Logger)
@@ -120,8 +121,7 @@ func main() {
 	})
 
 	go func() {
-		ctx := context.Background()
-		scraper.Run(ctx, trendsRepo)
+		scraper.Run(context.Background(), trendsRepo)
 	}()
 
 	log.Printf("server listening on :%s", port)

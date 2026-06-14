@@ -71,15 +71,19 @@ func (r *pgTrendsRepo) UpsertBenchmark(ctx context.Context, b models.BenchmarkDa
 }
 
 func (r *pgTrendsRepo) ListBenchmarks(ctx context.Context, sources []string, from, to string) ([]models.BenchmarkData, error) {
-	q := `SELECT id, source, date, value FROM benchmark_data
-	      WHERE date BETWEEN $1::date AND $2::date`
+	var q string
 	var args []interface{}
-	args = append(args, from, to)
 	if len(sources) > 0 {
-		q += ` AND source = ANY($3::text[])`
-		args = append(args, sources)
+		q = `SELECT id, source, date, value FROM benchmark_data
+		     WHERE date BETWEEN $1::date AND $2::date AND source = ANY($3::text[])
+		     ORDER BY source, date`
+		args = []interface{}{from, to, sources}
+	} else {
+		q = `SELECT id, source, date, value FROM benchmark_data
+		     WHERE date BETWEEN $1::date AND $2::date
+		     ORDER BY source, date`
+		args = []interface{}{from, to}
 	}
-	q += ` ORDER BY source, date`
 
 	rows, err := r.db.Query(ctx, q, args...)
 	if err != nil {
@@ -133,59 +137,43 @@ func (r *pgTrendsRepo) LatestBankRates(ctx context.Context) ([]models.BankRate, 
 	}
 	defer rows.Close()
 
-	type rawRate struct {
-		source string
-		value  float64
-		date   string
-	}
-	var raws []rawRate
-	for rows.Next() {
-		var rr rawRate
-		var d time.Time
-		rows.Scan(&rr.source, &rr.value, &d)
-		rr.date = d.Format("2006-01-02")
-		raws = append(raws, rr)
-	}
-
 	bankMap := map[string]*models.BankRate{}
-	for _, rr := range raws {
-		parts := strings.SplitN(rr.source, "_", 3)
-		if len(parts) != 3 {
+	for rows.Next() {
+		var src string
+		var val float64
+		var d time.Time
+		rows.Scan(&src, &val, &d)
+		dateStr := d.Format("2006-01-02")
+		// src format: bankrate_<bank>_saving or bankrate_<bank>_lending
+		parts := strings.SplitN(strings.TrimPrefix(src, "bankrate_"), "_", 2)
+		if len(parts) != 2 {
 			continue
 		}
-		bank := parts[1]
+		bank, kind := parts[0], parts[1]
 		if bankMap[bank] == nil {
-			bankMap[bank] = &models.BankRate{Bank: bank, FetchedDate: rr.date}
+			bankMap[bank] = &models.BankRate{Bank: bank, FetchedDate: dateStr}
 		}
-		switch parts[2] {
+		switch kind {
 		case "saving":
-			bankMap[bank].Saving12m = rr.value
+			bankMap[bank].Saving12m = val
 		case "lending":
-			bankMap[bank].Lending = rr.value
+			bankMap[bank].Lending = val
 		}
 	}
 
 	order := []string{"vcb", "bidv", "agribank", "tcb"}
 	var out []models.BankRate
+	seen := map[string]bool{}
 	for _, bank := range order {
 		if r, ok := bankMap[bank]; ok {
 			out = append(out, *r)
+			seen[bank] = true
 		}
 	}
 	for bank, r := range bankMap {
-		inOrder := false
-		for _, o := range order {
-			if o == bank {
-				inOrder = true
-				break
-			}
-		}
-		if !inOrder {
+		if !seen[bank] {
 			out = append(out, *r)
 		}
-	}
-	if out == nil {
-		out = []models.BankRate{}
 	}
 	return out, nil
 }
@@ -217,7 +205,7 @@ func (r *pgTrendsRepo) UpsertNews(ctx context.Context, items []models.NewsItem) 
 		_, err := r.db.Exec(ctx,
 			`INSERT INTO news_cache (source, published_at, title, url)
 			 VALUES ($1, $2, $3, $4)
-			 ON CONFLICT DO NOTHING`,
+			 ON CONFLICT (url) DO NOTHING`,
 			n.Source, n.PublishedAt, n.Title, n.URL)
 		if err != nil {
 			return err
