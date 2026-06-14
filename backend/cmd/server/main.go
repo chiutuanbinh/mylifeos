@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -122,6 +123,11 @@ func main() {
 
 	go func() {
 		scraper.Run(context.Background(), trendsRepo)
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			scraper.Run(context.Background(), trendsRepo)
+		}
 	}()
 
 	log.Printf("server listening on :%s", port)
