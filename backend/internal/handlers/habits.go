@@ -57,7 +57,17 @@ func (h *HabitHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *HabitHandler) GetLogs(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.GetUserID(r)
-	logs, err := h.repo.GetLogs(r.Context(), uid, r.URL.Query().Get("date"))
+	q := r.URL.Query()
+	from, to := q.Get("from"), q.Get("to")
+	var (
+		logs []models.HabitLog
+		err  error
+	)
+	if from != "" && to != "" {
+		logs, err = h.repo.GetLogsRange(r.Context(), uid, from, to)
+	} else {
+		logs, err = h.repo.GetLogs(r.Context(), uid, q.Get("date"))
+	}
 	if err != nil {
 		http.Error(w, `{"error":"internal"}`, 500)
 		return

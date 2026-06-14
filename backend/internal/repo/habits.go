@@ -14,6 +14,7 @@ type HabitRepo interface {
 	Update(ctx context.Context, h models.Habit) (models.Habit, error)
 	Delete(ctx context.Context, id, userID string) error
 	GetLogs(ctx context.Context, userID, date string) ([]models.HabitLog, error)
+	GetLogsRange(ctx context.Context, userID, from, to string) ([]models.HabitLog, error)
 	GetLogRange(ctx context.Context, habitID, userID, from, to string) ([]models.HabitLog, error)
 	ToggleLog(ctx context.Context, habitID, userID, date string) (models.HabitLog, error)
 }
@@ -75,6 +76,31 @@ func (r *pgHabitRepo) GetLogs(ctx context.Context, userID, date string) ([]model
 		 FROM habit_logs hl
 		 JOIN habits h ON h.id = hl.habit_id
 		 WHERE hl.user_id = $1 AND hl.logged_date = $2::date`, userID, date)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []models.HabitLog
+	for rows.Next() {
+		var l models.HabitLog
+		var loggedDate time.Time
+		rows.Scan(&l.ID, &l.HabitID, &l.UserID, &loggedDate, &l.Done)
+		l.LoggedDate = loggedDate.Format("2006-01-02")
+		out = append(out, l)
+	}
+	if out == nil {
+		out = []models.HabitLog{}
+	}
+	return out, rows.Err()
+}
+
+func (r *pgHabitRepo) GetLogsRange(ctx context.Context, userID, from, to string) ([]models.HabitLog, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT id, habit_id, user_id, logged_date, done
+		 FROM habit_logs
+		 WHERE user_id = $1 AND logged_date BETWEEN $2::date AND $3::date AND done = true
+		 ORDER BY logged_date`,
+		userID, from, to)
 	if err != nil {
 		return nil, err
 	}

@@ -44,3 +44,29 @@ func TestAuthMissingToken(t *testing.T) {
 		t.Errorf("expected 401, got %d", w.Code)
 	}
 }
+
+func TestAuthKeyFuncCacheHit(t *testing.T) {
+	// Prime the cache, then hit it a second time without reset.
+	os.Setenv("ENV", "production")
+	os.Setenv("SUPABASE_URL", "http://127.0.0.1:19999")
+	defer os.Unsetenv("ENV")
+	defer os.Unsetenv("SUPABASE_URL")
+	middleware.ResetKeyFunc()
+	defer middleware.ResetKeyFunc()
+
+	handler := middleware.Auth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	makeReq := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("Authorization", "Bearer sometoken")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		return w
+	}
+
+	// First call loads keyfunc; second hits cache path.
+	makeReq()
+	w := makeReq()
+	if w.Code == http.StatusOK {
+		t.Errorf("expected non-200, got %d", w.Code)
+	}
+}

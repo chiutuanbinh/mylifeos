@@ -9,6 +9,7 @@ import (
 
 type NoteRepo interface {
 	List(ctx context.Context, userID, search, tags string, pinned *bool) ([]models.Note, error)
+	Get(ctx context.Context, id, userID string) (models.Note, error)
 	Create(ctx context.Context, n models.Note) (models.Note, error)
 	Update(ctx context.Context, n models.Note) (models.Note, error)
 	Delete(ctx context.Context, id, userID string) error
@@ -42,6 +43,15 @@ func (r *pgNoteRepo) List(ctx context.Context, userID, search, tags string, pinn
 		out = []models.Note{}
 	}
 	return out, rows.Err()
+}
+
+func (r *pgNoteRepo) Get(ctx context.Context, id, userID string) (models.Note, error) {
+	row := r.db.QueryRow(ctx,
+		`SELECT id, user_id, title, content, tags, pinned, created_at, updated_at
+		 FROM notes WHERE id=$1 AND user_id=$2`, id, userID)
+	var out models.Note
+	err := row.Scan(&out.ID, &out.UserID, &out.Title, &out.Content, &out.Tags, &out.Pinned, &out.CreatedAt, &out.UpdatedAt)
+	return out, err
 }
 
 func (r *pgNoteRepo) Create(ctx context.Context, n models.Note) (models.Note, error) {

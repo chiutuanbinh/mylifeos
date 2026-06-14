@@ -54,14 +54,35 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.GetUserID(r)
-	var n models.Note
-	if err := json.NewDecoder(r.Body).Decode(&n); err != nil {
+	id := chi.URLParam(r, "id")
+
+	existing, err := h.repo.Get(r.Context(), id, uid)
+	if err != nil {
+		http.Error(w, `{"error":"not found"}`, 404)
+		return
+	}
+
+	var patch map[string]json.RawMessage
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
 		http.Error(w, `{"error":"bad request"}`, 400)
 		return
 	}
-	n.ID = chi.URLParam(r, "id")
-	n.UserID = uid
-	out, err := h.repo.Update(r.Context(), n)
+
+	merged := existing
+	if v, ok := patch["title"]; ok {
+		json.Unmarshal(v, &merged.Title)
+	}
+	if v, ok := patch["content"]; ok {
+		json.Unmarshal(v, &merged.Content)
+	}
+	if v, ok := patch["tags"]; ok {
+		json.Unmarshal(v, &merged.Tags)
+	}
+	if v, ok := patch["pinned"]; ok {
+		json.Unmarshal(v, &merged.Pinned)
+	}
+
+	out, err := h.repo.Update(r.Context(), merged)
 	if err != nil {
 		http.Error(w, `{"error":"internal"}`, 500)
 		return

@@ -29,8 +29,8 @@ export const updateHabit = (id: string, data: { name: string; icon: string }) =>
   apiClient.put<Habit>(`/habits/${id}`, data).then(r => r.data)
 export const getHabitLogRange = (habitId: string, from: string, to: string) =>
   apiClient.get<HabitLog[]>(`/habits/${habitId}/logs`, { params: { from, to } }).then(r => r.data)
-export const getHabitLogs = (date?: string) =>
-  apiClient.get<HabitLog[]>('/habits/logs', { params: { date } }).then(r => r.data)
+export const getHabitLogs = (date?: string, from?: string, to?: string) =>
+  apiClient.get<HabitLog[]>('/habits/logs', { params: { date, from, to } }).then(r => r.data)
 export const toggleHabitLog = (habitId: string, date?: string) =>
   apiClient.post<HabitLog>(`/habits/${habitId}/log`, { date }).then(r => r.data)
 

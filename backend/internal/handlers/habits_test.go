@@ -31,6 +31,9 @@ func (m *mockHabitRepo) ToggleLog(_ context.Context, _, _, _ string) (models.Hab
 	return models.HabitLog{ID: "hl-1", Done: true}, nil
 }
 func (m *mockHabitRepo) Update(_ context.Context, h models.Habit) (models.Habit, error) { return h, nil }
+func (m *mockHabitRepo) GetLogsRange(_ context.Context, _, _, _ string) ([]models.HabitLog, error) {
+	return []models.HabitLog{}, nil
+}
 func (m *mockHabitRepo) GetLogRange(_ context.Context, _, _, _, _ string) ([]models.HabitLog, error) {
 	return []models.HabitLog{}, nil
 }
