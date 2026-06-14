@@ -11,12 +11,14 @@ const CAT_COLORS: Record<string, string> = {
   Tech: 'cyan', Auto: 'orange', Utilities: 'gold', Shopping: 'magenta',
 }
 
+const fmtVND = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
+
 const txColumns: ColumnsType<Transaction> = [
-  { title: 'Date',        dataIndex: 'date',        width: 72,  render: v => <span style={{ color: '#bbb', fontSize: 12 }}>{v}</span> },
+  { title: 'Date',        dataIndex: 'date',        width: 100, render: v => <span style={{ color: '#bbb', fontSize: 12, whiteSpace: 'nowrap' }}>{v}</span> },
   { title: 'Description', dataIndex: 'description', ellipsis: true, render: v => <span style={{ fontSize: 12 }}>{v}</span> },
   { title: 'Category',    dataIndex: 'category',    width: 120, render: c => <Tag color={CAT_COLORS[c]} style={{ fontSize: 11, margin: 0 }}>{c}</Tag> },
-  { title: 'Amount',      dataIndex: 'amount',      align: 'right', width: 92,
-    render: a => <span style={{ color: a > 0 ? '#52c41a' : '#ff4d4f', fontFamily: 'monospace', fontSize: 12, fontWeight: 600 }}>{a > 0 ? '+' : '-'}${Math.abs(a).toFixed(2)}</span> },
+  { title: 'Amount',      dataIndex: 'amount',      align: 'right', width: 140,
+    render: a => <span style={{ color: a > 0 ? '#52c41a' : '#ff4d4f', fontFamily: 'monospace', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{a > 0 ? '+' : '-'}{fmtVND(a)}</span> },
 ]
 
 export function DashboardPage() {
@@ -39,7 +41,7 @@ export function DashboardPage() {
   const stats = [
     {
       label: 'Net Worth',
-      val: `$${netWorth.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+      val: `₫${Math.round(netWorth).toLocaleString('vi-VN')}`,
       sub: netWorthChange !== null
         ? `${Number(netWorthChange) >= 0 ? '↑' : '↓'} ${Math.abs(Number(netWorthChange))}% vs last snapshot`
         : 'No history yet',
@@ -48,9 +50,9 @@ export function DashboardPage() {
       sparkC: '#52c41a',
       nav: '/wealth',
     },
-    { label: "Today's Habits", val: `${data.habits_done_today} / ${data.habits_total}`, sub: `${habitPct}% complete`, subC: '#1677ff', pct: habitPct, nav: '/health' },
-    { label: 'Goals (avg)',    val: `${data.goals_avg_progress}%`, sub: 'active OKRs', subC: '#722ed1', pct: data.goals_avg_progress, pctC: '#722ed1', nav: '/goals' },
-    { label: 'Monthly Budget', val: `$${data.budget_total.toLocaleString()}`, sub: `$${data.budget_spent.toLocaleString()} spent · ${budgetPct}%`, subC: '#fa8c16', pct: budgetPct, pctC: '#fa8c16', nav: '/wealth' },
+    { label: "Today's Habits", val: `${data.habits_done_today} / ${data.habits_total}`, sub: `${habitPct}% complete`, subC: '#1677ff', pct: habitPct, nav: '/objectives' },
+    { label: 'Goals (avg)',    val: `${data.goals_avg_progress}%`, sub: 'active OKRs', subC: '#722ed1', pct: data.goals_avg_progress, pctC: '#722ed1', nav: '/objectives' },
+    { label: 'Monthly Budget', val: `₫${Math.round(data.budget_total).toLocaleString('vi-VN')}`, sub: `₫${Math.round(data.budget_spent).toLocaleString('vi-VN')} spent · ${budgetPct}%`, subC: '#fa8c16', pct: budgetPct, pctC: '#fa8c16', nav: '/wealth' },
   ]
 
   return (

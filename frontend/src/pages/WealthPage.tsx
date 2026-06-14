@@ -12,10 +12,12 @@ import {
   getBudgets, upsertBudget,
   getAssets, createAsset, updateAsset, deleteAsset,
   getNetWorthSnapshots, addNetWorthSnapshot,
-  getBenchmarks, getBankRates, getNews,
+  getBenchmarks, getBankRates, getNews, triggerScrape,
 } from '../api/endpoints'
 import type { Transaction, Asset, BankRate, NewsItem } from '../api/types'
 import { NetWorthChart } from '../components/NetWorthChart'
+
+const fmtVND = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
 
 const CATEGORIES = ['Food', 'Income', 'Entertainment', 'Health', 'Tech', 'Auto', 'Utilities', 'Shopping']
 const CAT_COLORS: Record<string, string> = {
@@ -43,11 +45,11 @@ function TransactionsTab() {
   const totalExpenses = txs.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
 
   const columns: ColumnsType<Transaction> = [
-    { title: 'Date', dataIndex: 'date', width: 90 },
+    { title: 'Date', dataIndex: 'date', width: 105 },
     { title: 'Description', dataIndex: 'description', ellipsis: true },
     { title: 'Category', dataIndex: 'category', width: 130, render: c => <Tag color={CAT_COLORS[c]}>{c}</Tag> },
-    { title: 'Amount', dataIndex: 'amount', align: 'right', width: 100,
-      render: a => <span style={{ color: a > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>{a > 0 ? '+' : '-'}${Math.abs(a).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
+    { title: 'Amount', dataIndex: 'amount', align: 'right', width: 150,
+      render: a => <span style={{ color: a > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600, whiteSpace: 'nowrap' }}>{a > 0 ? '+' : '-'}{fmtVND(a)}</span> },
     { title: '', width: 40, render: (_, row) => <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => deleteMutation.mutate(row.id)} /> },
   ]
 
@@ -55,9 +57,9 @@ function TransactionsTab() {
     <>
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
         {[
-          { label: 'Income', val: `$${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#52c41a' },
-          { label: 'Expenses', val: `$${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#ff4d4f' },
-          { label: 'Net Cash', val: `$${(totalIncome - totalExpenses).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#1677ff' },
+          { label: 'Income', val: fmtVND(totalIncome), color: '#52c41a' },
+          { label: 'Expenses', val: fmtVND(totalExpenses), color: '#ff4d4f' },
+          { label: 'Net Cash', val: (totalIncome - totalExpenses >= 0 ? '' : '-') + fmtVND(totalIncome - totalExpenses), color: '#1677ff' },
         ].map((s, i) => (
           <Col span={8} key={i}>
             <Card size="small">
@@ -110,7 +112,7 @@ function BudgetsTab() {
               const pct = Math.min(Math.round(spent / b.monthly_limit * 100), 100)
               return (
                 <Col span={8} key={b.id}>
-                  <div style={{ fontSize: 12, marginBottom: 2 }}>{b.category} <span style={{ color: '#999' }}>${spent.toLocaleString()} / ${b.monthly_limit.toLocaleString()}</span></div>
+                  <div style={{ fontSize: 12, marginBottom: 2 }}>{b.category} <span style={{ color: '#999' }}>{fmtVND(spent)} / {fmtVND(b.monthly_limit)}</span></div>
                   <Progress percent={pct} size="small" strokeColor={pct > 90 ? '#ff4d4f' : '#1677ff'} />
                 </Col>
               )
@@ -124,7 +126,7 @@ function BudgetsTab() {
             <Select placeholder="Category" style={{ width: 160 }} options={CATEGORIES.map(c => ({ value: c, label: c }))} />
           </Form.Item>
           <Form.Item name="monthly_limit" rules={[{ required: true }]}>
-            <InputNumber placeholder="Monthly limit $" min={0} step={1} />
+            <InputNumber placeholder="Monthly limit ₫" min={0} step={1} />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={upsertMutation.isPending}>Save</Button>
         </Form>
@@ -138,7 +140,7 @@ function assetFormFields(form: FormInstance<AssetFormValues>, onFinish: (v: Asse
     <Form form={form} layout="vertical" onFinish={onFinish}>
       <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}><Input /></Form.Item>
       <Form.Item name="category" label="Category" rules={[{ required: true, message: 'Category is required' }]}><Input /></Form.Item>
-      <Form.Item name="purchase_value" label="Purchase Value ($)" rules={[{ required: true, message: 'Purchase value is required' }, { type: 'number', min: 0, message: 'Must be >= 0' }]}>
+      <Form.Item name="purchase_value" label="Purchase Value (₫)" rules={[{ required: true, message: 'Purchase value is required' }, { type: 'number', min: 0, message: 'Must be >= 0' }]}>
         <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
       </Form.Item>
       <Form.Item name="depreciation_rate_pct" label="Depreciation Rate (% per year)" initialValue={0} rules={[{ type: 'number', min: 0, max: 100, message: 'Must be 0-100' }]}>
@@ -205,8 +207,8 @@ function AssetsTab() {
     {
       title: 'Current Value', dataIndex: 'current_value', width: 140, align: 'right',
       render: (cv, row) => (
-        <Tooltip title={row.purchase_value ? `Purchased $${row.purchase_value.toLocaleString()}, ${(row.depreciation_rate * 100).toFixed(0)}%/yr depreciation` : undefined}>
-          <span>${cv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <Tooltip title={row.purchase_value ? `Purchased ${fmtVND(row.purchase_value)}, ${(row.depreciation_rate * 100).toFixed(0)}%/yr depreciation` : undefined}>
+          <span>{fmtVND(cv)}</span>
         </Tooltip>
       ),
     },
@@ -238,7 +240,7 @@ function AssetsTab() {
         <Col span={6}>
           <Card size="small">
             <div style={{ fontSize: 12, color: '#999' }}>Total Assets</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#52c41a' }}>${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: '#52c41a' }}>{fmtVND(grandTotal)}</div>
           </Card>
         </Col>
         {categories.slice(0, 3).map(cat => {
@@ -247,7 +249,7 @@ function AssetsTab() {
             <Col span={6} key={cat}>
               <Card size="small">
                 <div style={{ fontSize: 12, color: '#999' }}>{cat}</div>
-                <div style={{ fontSize: 18, fontWeight: 600 }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div style={{ fontSize: 18, fontWeight: 600 }}>{fmtVND(total)}</div>
               </Card>
             </Col>
           )
@@ -275,8 +277,24 @@ const BANK_DISPLAY: Record<string, string> = {
 
 function TrendsTab() {
   const [backfillOpen, setBackfillOpen] = useState(false)
+  const [scraping, setScraping] = useState(false)
   const [form] = Form.useForm()
   const qc = useQueryClient()
+
+  const handleScrape = async () => {
+    setScraping(true)
+    try {
+      await triggerScrape()
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['benchmarks'] })
+        qc.invalidateQueries({ queryKey: ['bank-rates'] })
+        qc.invalidateQueries({ queryKey: ['news'] })
+        setScraping(false)
+      }, 5000)
+    } catch {
+      setScraping(false)
+    }
+  }
 
   const now = new Date()
   const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().split('T')[0]
@@ -335,7 +353,7 @@ function TrendsTab() {
           <Card size="small">
             <div style={{ fontSize: 11, color: '#999' }}>Net Worth (30d)</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: '#1677ff' }}>
-              {latest ? `$${latest.net_worth.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+              {latest ? fmtVND(latest.net_worth) : '—'}
             </div>
             {snap30 && latest && (
               <div style={{ fontSize: 11, color: Number(pctChange(latest.net_worth, snap30.net_worth)) >= 0 ? '#52c41a' : '#ff4d4f' }}>
@@ -371,9 +389,12 @@ function TrendsTab() {
           </Card>
         </Col>
         <Col span={6}>
-          <Card size="small" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Card size="small" style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', justifyContent: 'center' }}>
             <Button size="small" icon={<PlusOutlined />} onClick={() => setBackfillOpen(true)}>
               Add past data point
+            </Button>
+            <Button size="small" loading={scraping} onClick={handleScrape}>
+              Refresh market data
             </Button>
           </Card>
         </Col>
@@ -435,7 +456,7 @@ function TrendsTab() {
         <Form form={form} layout="vertical"
           onFinish={values => addMutation.mutate({ date: values.date, net_worth: values.net_worth, note: values.note })}>
           <Form.Item name="date" label="Date" rules={[{ required: true }]}><Input type="date" /></Form.Item>
-          <Form.Item name="net_worth" label="Net Worth ($)" rules={[{ required: true }]}>
+          <Form.Item name="net_worth" label="Net Worth (₫)" rules={[{ required: true }]}>
             <InputNumber style={{ width: '100%' }} min={0} step={1000000} />
           </Form.Item>
           <Form.Item name="note" label="Note (optional)"><Input /></Form.Item>

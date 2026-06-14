@@ -98,3 +98,6 @@ export const getBankRates = () =>
 
 export const getNews = () =>
   apiClient.get<NewsItem[]>('/news').then(r => r.data)
+
+export const triggerScrape = () =>
+  apiClient.post<{ status: string }>('/scrape').then(r => r.data)
