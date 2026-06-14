@@ -5,14 +5,14 @@ ALTER TABLE assets
   ADD COLUMN IF NOT EXISTS depreciation_rate NUMERIC(5,4) NOT NULL DEFAULT 0;
 
 ALTER TABLE assets
-  ADD CONSTRAINT IF NOT EXISTS assets_depreciation_rate_range
+  ADD CONSTRAINT assets_depreciation_rate_range
     CHECK (depreciation_rate BETWEEN 0 AND 1);
 
 ALTER TABLE goals
   ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'active';
 
 ALTER TABLE goals
-  ADD CONSTRAINT IF NOT EXISTS goals_status_valid
+  ADD CONSTRAINT goals_status_valid
     CHECK (status IN ('active', 'completed', 'archived'));
 
 CREATE TABLE IF NOT EXISTS net_worth_snapshots (

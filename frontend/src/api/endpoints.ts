@@ -25,6 +25,10 @@ export const createHabit = (data: { name: string; icon: string }) =>
   apiClient.post<Habit>('/habits', data).then(r => r.data)
 export const deleteHabit = (id: string) =>
   apiClient.delete(`/habits/${id}`)
+export const updateHabit = (id: string, data: { name: string; icon: string }) =>
+  apiClient.put<Habit>(`/habits/${id}`, data).then(r => r.data)
+export const getHabitLogRange = (habitId: string, from: string, to: string) =>
+  apiClient.get<HabitLog[]>(`/habits/${habitId}/logs`, { params: { from, to } }).then(r => r.data)
 export const getHabitLogs = (date?: string) =>
   apiClient.get<HabitLog[]>('/habits/logs', { params: { date } }).then(r => r.data)
 export const toggleHabitLog = (habitId: string, date?: string) =>
@@ -42,6 +46,8 @@ export const addKeyResult = (goalId: string, description: string) =>
   apiClient.post<KeyResult>(`/goals/${goalId}/key-results`, { description }).then(r => r.data)
 export const updateKeyResult = (goalId: string, krId: string, data: Partial<KeyResult>) =>
   apiClient.patch<KeyResult>(`/goals/${goalId}/key-results/${krId}`, data).then(r => r.data)
+export const deleteKeyResult = (goalId: string, krId: string) =>
+  apiClient.delete(`/goals/${goalId}/key-results/${krId}`)
 
 export const getNotes = (params?: { search?: string; tags?: string; pinned?: boolean }) =>
   apiClient.get<Note[]>('/notes', { params }).then(r => r.data)

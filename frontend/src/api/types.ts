@@ -48,6 +48,7 @@ export interface Goal {
   target_date: string | null
   progress: number
   color: string
+  status: 'active' | 'completed' | 'archived'
   created_at: string
   key_results: KeyResult[]
 }
