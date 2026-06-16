@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu, Avatar, Badge, Space, Button, Breadcrumb, Typography } from 'antd'
 import {
   DashboardOutlined, DollarOutlined, TrophyOutlined,
-  FileTextOutlined, CalendarOutlined, SettingOutlined,
+  CalendarOutlined, SettingOutlined,
   BellOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/auth'
@@ -13,7 +13,6 @@ const NAV = [
   { type: 'divider' as const },
   { key: '/wealth',   icon: <DollarOutlined />,   label: 'Wealth' },
   { key: '/objectives', icon: <TrophyOutlined />, label: 'Objectives' },
-  { key: '/notes',    icon: <FileTextOutlined />, label: 'Notes' },
   { key: '/calendar', icon: <CalendarOutlined />, label: 'Calendar' },
   { type: 'divider' as const },
   { key: '/settings', icon: <SettingOutlined />,  label: 'Settings' },
@@ -23,7 +22,6 @@ const TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/wealth': 'Wealth',
   '/objectives': 'Objectives',
-  '/notes': 'Notes & Knowledge',
   '/calendar': 'Calendar & Schedule',
   '/settings': 'Settings',
 }

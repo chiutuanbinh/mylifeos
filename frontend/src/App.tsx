@@ -7,7 +7,6 @@ import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { WealthPage } from './pages/WealthPage'
 import { ObjectivesPage } from './pages/ObjectivesPage'
-import { NotesPage } from './pages/NotesPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -31,7 +30,6 @@ export default function App() {
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/wealth"    element={<WealthPage />} />
                   <Route path="/objectives" element={<ObjectivesPage />} />
-                  <Route path="/notes"     element={<NotesPage />} />
                   <Route path="/calendar"  element={<CalendarPage />} />
                   <Route path="/settings"  element={<SettingsPage />} />
                 </Routes>
