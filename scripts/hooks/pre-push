@@ -24,7 +24,7 @@ echo "→ Running backend tests (with coverage gate ≥80%)..."
 cd "$(git rev-parse --show-toplevel)/backend"
 
 go test \
-  ./internal/handlers/... \
+  ./internal/transport/http/... \
   ./internal/middleware/... \
   -coverprofile=coverage.out -covermode=atomic -timeout 30s
 

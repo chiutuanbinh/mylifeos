@@ -17,7 +17,7 @@ jobs:
       - name: Test with coverage
         run: |
           cd backend && go test \
-            ./internal/handlers/... \
+            ./internal/transport/http/... \
             ./internal/middleware/... \
             -coverprofile=coverage.out -covermode=atomic
       - name: Check per-file coverage (≥80% each)
