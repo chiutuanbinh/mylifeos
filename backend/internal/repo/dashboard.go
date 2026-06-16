@@ -88,7 +88,10 @@ func (r *pgDashboardRepo) Summary(ctx context.Context, userID string) (models.Da
 	row = r.db.QueryRow(ctx, `SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = $1`, userID)
 	row.Scan(&cashPosition)
 
-	netWorth := assetsTotal + cashPosition
+	var totalLiabilities float64
+	r.db.QueryRow(ctx, `SELECT COALESCE(SUM(balance),0) FROM liabilities WHERE user_id=$1`, userID).Scan(&totalLiabilities)
+
+	netWorth := assetsTotal + cashPosition - totalLiabilities
 	s.NetWorth = netWorth
 
 	// Upsert today's snapshot
