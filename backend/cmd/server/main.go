@@ -13,11 +13,13 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 
-	"github.com/chiutuanbinh/mylifeos/backend/internal/handlers"
+	"github.com/chiutuanbinh/mylifeos/backend/internal/infra/postgres"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/middleware"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/migrate"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/repo"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/scraper"
+	dashboardsvc "github.com/chiutuanbinh/mylifeos/backend/internal/service/dashboard"
+	httphandler "github.com/chiutuanbinh/mylifeos/backend/internal/transport/http"
 )
 
 func main() {
@@ -28,7 +30,7 @@ func main() {
 		port = "8080"
 	}
 
-	db, err := repo.NewPool(context.Background())
+	db, err := postgres.NewPool(context.Background())
 	if err != nil {
 		log.Fatalf("db connect: %v", err)
 	}
@@ -42,21 +44,35 @@ func main() {
 		}
 	}
 
-	dashHandler    := handlers.NewDashboardHandler(repo.NewDashboardRepo(db))
-	txHandler      := handlers.NewTransactionHandler(repo.NewTransactionRepo(db))
-	krLogHandler   := handlers.NewKRLogHandler(repo.NewKRLogRepo(db))
-	goalHandler    := handlers.NewGoalHandler(repo.NewGoalRepo(db))
-	noteHandler    := handlers.NewNoteHandler(repo.NewNoteRepo(db))
-	eventRepo      := repo.NewEventRepo(db)
-	eventHandler   := handlers.NewEventHandler(eventRepo)
-	gcalHandler    := handlers.NewGoogleCalendarHandler(eventRepo)
-	assetRepo       := repo.NewAssetRepo(db)
-	assetHandler    := handlers.NewAssetHandler(assetRepo)
-	liabilityRepo   := repo.NewLiabilityRepo(db)
-	liabilityHandler := handlers.NewLiabilityHandler(liabilityRepo)
-	settingHandler := handlers.NewSettingsHandler(repo.NewSettingsRepo(db))
-	trendsRepo     := repo.NewTrendsRepo(db)
-	trendsHandler  := handlers.NewTrendsHandler(trendsRepo, assetRepo)
+	// Repos
+	txRepo       := postgres.NewTransactionRepo(db)
+	krLogRepo    := postgres.NewKRLogRepo(db)
+	goalRepo     := postgres.NewGoalRepo(db)
+	noteRepo     := postgres.NewNoteRepo(db)
+	eventRepo    := postgres.NewEventRepo(db)
+	assetRepo    := postgres.NewAssetRepo(db)
+	liabRepo     := postgres.NewLiabilityRepo(db)
+	settingsRepo := postgres.NewSettingsRepo(db)
+	trendsRepo   := postgres.NewTrendsRepo(db)
+
+	// scraperRepo uses the old repo interface expected by scraper.Run
+	scraperRepo := repo.NewTrendsRepo(db)
+
+	// Services
+	dashSvc := dashboardsvc.New(assetRepo, liabRepo, txRepo, goalRepo, trendsRepo)
+
+	// Handlers
+	dashHandler    := httphandler.NewDashboardHandler(dashSvc)
+	txHandler      := httphandler.NewTransactionHandler(txRepo)
+	krLogHandler   := httphandler.NewKRLogHandler(krLogRepo)
+	goalHandler    := httphandler.NewGoalHandler(goalRepo)
+	noteHandler    := httphandler.NewNoteHandler(noteRepo)
+	eventHandler   := httphandler.NewEventHandler(eventRepo)
+	gcalHandler    := httphandler.NewGoogleCalendarHandler(eventRepo)
+	assetHandler   := httphandler.NewAssetHandler(assetRepo)
+	liabHandler    := httphandler.NewLiabilityHandler(liabRepo)
+	settingHandler := httphandler.NewSettingsHandler(settingsRepo)
+	trendsHandler  := httphandler.NewTrendsHandler(trendsRepo, assetRepo, scraperRepo)
 
 	r := chi.NewRouter()
 	r.Use(chimw.Logger)
@@ -112,10 +128,10 @@ func main() {
 		r.Patch("/assets/{id}",    assetHandler.Update)
 		r.Delete("/assets/{id}",   assetHandler.Delete)
 
-		r.Get("/liabilities",         liabilityHandler.List)
-		r.Post("/liabilities",         liabilityHandler.Create)
-		r.Patch("/liabilities/{id}",   liabilityHandler.Update)
-		r.Delete("/liabilities/{id}",  liabilityHandler.Delete)
+		r.Get("/liabilities",         liabHandler.List)
+		r.Post("/liabilities",         liabHandler.Create)
+		r.Patch("/liabilities/{id}",   liabHandler.Update)
+		r.Delete("/liabilities/{id}",  liabHandler.Delete)
 
 		r.Get("/settings",  settingHandler.Get)
 		r.Put("/settings",  settingHandler.Update)
@@ -129,11 +145,11 @@ func main() {
 	})
 
 	go func() {
-		scraper.Run(context.Background(), trendsRepo)
+		scraper.Run(context.Background(), scraperRepo)
 		ticker := time.NewTicker(24 * time.Hour)
 		defer ticker.Stop()
 		for range ticker.C {
-			scraper.Run(context.Background(), trendsRepo)
+			scraper.Run(context.Background(), scraperRepo)
 		}
 	}()
 
