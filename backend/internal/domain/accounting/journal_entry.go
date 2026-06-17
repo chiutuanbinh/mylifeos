@@ -74,20 +74,41 @@ func (e *JournalEntry) ReconstituteLine(id string, acctID AccountID, money Money
 
 func (e *JournalEntry) Post() error {
 	if len(e.lines) < 2 {
-		return errors.New("entry requires at least 2 lines")
+		return errors.New("journal entry must have at least 2 lines")
 	}
-	var debits, credits decimal.Decimal
+
+	// validate balance per currency
+	type currencyBalance struct {
+		debits  decimal.Decimal
+		credits decimal.Decimal
+	}
+	byCurrency := map[string]*currencyBalance{}
 	for _, l := range e.lines {
+		if l.money.Amount.IsZero() {
+			return errors.New("journal line amount must be non-zero")
+		}
+		cur := l.money.Currency
+		if byCurrency[cur] == nil {
+			byCurrency[cur] = &currencyBalance{}
+		}
 		if l.side == Debit {
-			debits = debits.Add(l.money.Amount)
+			byCurrency[cur].debits = byCurrency[cur].debits.Add(l.money.Amount)
 		} else {
-			credits = credits.Add(l.money.Amount)
+			byCurrency[cur].credits = byCurrency[cur].credits.Add(l.money.Amount)
 		}
 	}
-	if !debits.Equal(credits) {
-		return fmt.Errorf("entry does not balance: debits %s ≠ credits %s", debits, credits)
+	for cur, bal := range byCurrency {
+		if !bal.debits.Equal(bal.credits) {
+			return fmt.Errorf("journal entry does not balance for currency %s: debits %s != credits %s",
+				cur, bal.debits.String(), bal.credits.String())
+		}
 	}
-	e.events = append(e.events, EntryPosted{EntryID: e.id, UserID: e.userID, Date: e.date})
+
+	e.events = append(e.events, EntryPosted{
+		EntryID: e.id,
+		UserID:  e.userID,
+		Date:    e.date,
+	})
 	return nil
 }
 

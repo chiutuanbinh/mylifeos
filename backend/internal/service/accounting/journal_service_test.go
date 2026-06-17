@@ -45,6 +45,16 @@ func newFakeAccountRepoWithIDs(userID string, ids ...string) *fakeAccountRepo {
 	return r
 }
 
+// newFakeAccountRepoWithGroupAccount builds a fakeAccountRepo with a group account
+func newFakeAccountRepoWithGroupAccount(userID string, leafID, groupID string) *fakeAccountRepo {
+	r := &fakeAccountRepo{accounts: map[accounting.AccountID]*accounting.Account{}}
+	group := accounting.ReconstituteAccount(groupID, userID, nil, groupID, accounting.Asset, "VND", true, false, 0)
+	r.accounts[group.ID()] = group
+	leaf := accounting.ReconstituteAccount(leafID, userID, nil, leafID, accounting.Asset, "VND", false, false, 0)
+	r.accounts[leaf.ID()] = leaf
+	return r
+}
+
 // --- tests ---
 
 func TestJournalService_RecordTransaction_Balanced(t *testing.T) {
@@ -98,5 +108,29 @@ func TestJournalService_RecordTransaction_UnbalancedReturnsError(t *testing.T) {
 	}
 	if len(repo.saved) != 0 {
 		t.Error("unbalanced entry must not be saved")
+	}
+}
+
+func TestJournalService_RecordTransaction_RejectsGroupAccount(t *testing.T) {
+	repo := &fakeJournalRepo{}
+	pub := &fakePublisher{}
+	ar := newFakeAccountRepoWithGroupAccount("user1", "leaf", "group")
+	svc := accountingsvc.NewJournalService(repo, ar, pub)
+
+	cmd := accountingsvc.RecordTransactionCmd{
+		UserID:      "user1",
+		Date:        time.Now(),
+		Description: "Should fail",
+		Lines: []accountingsvc.LineCmd{
+			{AccountID: "group", Amount: decimal.NewFromInt(100), Currency: "VND", Side: accounting.Debit},
+			{AccountID: "leaf", Amount: decimal.NewFromInt(100), Currency: "VND", Side: accounting.Credit},
+		},
+	}
+	_, err := svc.RecordTransaction(context.Background(), cmd)
+	if err == nil {
+		t.Fatal("want error when attempting to record line for group account")
+	}
+	if len(repo.saved) != 0 {
+		t.Error("transaction with group account must not be saved")
 	}
 }

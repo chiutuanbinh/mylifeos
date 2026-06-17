@@ -143,3 +143,59 @@ export interface NewsItem {
   title: string
   url: string
 }
+
+export interface Account {
+  id: string
+  user_id: string
+  parent_id: string | null
+  name: string
+  type: 'asset' | 'liability' | 'equity' | 'income' | 'expense'
+  currency: string
+  is_group: boolean
+  archived: boolean
+  sort_order: number
+}
+
+export interface JournalLine {
+  id: string
+  entry_id: string
+  account_id: string
+  amount: string
+  currency: string
+  side: 'debit' | 'credit'
+}
+
+export interface JournalEntry {
+  id: string
+  user_id: string
+  date: string
+  description: string
+  memo: string
+  lines: JournalLine[]
+}
+
+export interface CreateAccountRequest {
+  name: string
+  type: 'asset' | 'liability' | 'equity' | 'income' | 'expense'
+  currency: string
+  is_group: boolean
+  sort_order: number
+  parent_id: string | null
+}
+
+export interface CreateJournalEntryRequest {
+  date: string
+  description: string
+  memo: string
+  lines: {
+    account_id: string
+    amount: string
+    currency: string
+    side: 'debit' | 'credit'
+  }[]
+}
+
+export interface NetWorthResult {
+  net_worth: string
+  currency: string
+}

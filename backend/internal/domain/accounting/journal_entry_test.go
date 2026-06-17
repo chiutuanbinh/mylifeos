@@ -91,3 +91,25 @@ func TestAccount_Balance_WithRealLines(t *testing.T) {
 		t.Errorf("want 500, got %s", bal.Amount)
 	}
 }
+
+func TestJournalEntry_Post_PerCurrencyBalance_Mixed(t *testing.T) {
+	e := accounting.NewJournalEntry("user1", time.Now(), "Mixed currencies")
+	e.AddLine("account-usd", mustMoney(100, "USD"), accounting.Debit)
+	e.AddLine("account-vnd", mustMoney(2000, "VND"), accounting.Debit)
+	e.AddLine("account-usd-2", mustMoney(100, "USD"), accounting.Credit)
+	e.AddLine("account-vnd-2", mustMoney(2000, "VND"), accounting.Credit)
+	if err := e.Post(); err != nil {
+		t.Fatalf("want no error for balanced mixed currencies, got %v", err)
+	}
+}
+
+func TestJournalEntry_Post_PerCurrencyBalance_UnbalancedCurrency(t *testing.T) {
+	e := accounting.NewJournalEntry("user1", time.Now(), "Unbalanced currency")
+	e.AddLine("account-usd", mustMoney(100, "USD"), accounting.Debit)
+	e.AddLine("account-vnd", mustMoney(2000, "VND"), accounting.Debit)
+	e.AddLine("account-usd-2", mustMoney(50, "USD"), accounting.Credit)
+	e.AddLine("account-vnd-2", mustMoney(2000, "VND"), accounting.Credit)
+	if err := e.Post(); err == nil {
+		t.Fatal("want error for unbalanced USD")
+	}
+}
