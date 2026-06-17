@@ -9,6 +9,7 @@ import { WealthPage } from './pages/WealthPage'
 import { ObjectivesPage } from './pages/ObjectivesPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { AccountingPage } from './pages/AccountingPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore(s => s.token)
@@ -29,6 +30,7 @@ export default function App() {
                   <Route path="/"          element={<DashboardPage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/wealth"    element={<WealthPage />} />
+                  <Route path="/accounting" element={<AccountingPage />} />
                   <Route path="/objectives" element={<ObjectivesPage />} />
                   <Route path="/calendar"  element={<CalendarPage />} />
                   <Route path="/settings"  element={<SettingsPage />} />
