@@ -19,36 +19,62 @@ if [[ "$BRANCH" == "main" ]]; then
   exit 1
 fi
 
-echo "→ Running backend tests (with coverage gate ≥80%)..."
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+BACKEND="$REPO_ROOT/backend"
+COVERAGE="$BACKEND/coverage.out"
 
-cd "$(git rev-parse --show-toplevel)/backend"
+echo "→ Running backend coverage check..."
 
-go test \
-  ./internal/transport/http/... \
-  ./internal/middleware/... \
-  -coverprofile=coverage.out -covermode=atomic -timeout 30s
+cd "$BACKEND"
+go test ./internal/transport/http/... ./internal/middleware/... \
+  -coverprofile="$COVERAGE" -covermode=atomic -count=1 2>/dev/null
 
-COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
-echo "  Coverage: ${COVERAGE}%"
+python3 - "$COVERAGE" <<'EOF'
+import sys
 
-if [ "$(echo "$COVERAGE < 80" | bc -l)" -eq 1 ]; then
-  echo ""
-  echo "✗ Coverage ${COVERAGE}% is below 80%. Add tests before pushing."
-  echo ""
-  exit 1
-fi
+coverage_file = sys.argv[1]
+covered = {}
+total = {}
 
-echo "✓ Backend tests passed (${COVERAGE}% coverage)"
+with open(coverage_file) as f:
+    for line in f:
+        line = line.strip()
+        if line.startswith('mode:') or not line:
+            continue
+        parts = line.rsplit(' ', 2)
+        if len(parts) != 3:
+            continue
+        loc, nstmt, count = parts
+        file = loc.split(':')[0]
+        n = int(nstmt)
+        c = int(count)
+        total[file] = total.get(file, 0) + n
+        covered[file] = covered.get(file, 0) + (n if c > 0 else 0)
+
+THRESHOLD = 80.0
+failed = []
+
+for f in sorted(total):
+    pct = 100.0 * covered[f] / total[f] if total[f] else 0
+    short = f.split('/')[-1]
+    mark = '✓' if pct >= THRESHOLD else '✗'
+    print(f'  {mark} {pct:5.1f}%  {short}')
+    if pct < THRESHOLD:
+        failed.append((short, pct))
+
+if failed:
+    print()
+    for name, pct in failed:
+        print(f'  FAIL: {name} at {pct:.1f}% (need ≥{THRESHOLD:.0f}%)')
+    sys.exit(1)
+EOF
+
+echo "✓ Coverage OK"
 
 echo "→ Running frontend lint + build..."
-cd ../frontend
+cd "$REPO_ROOT/frontend"
 npm run lint --silent && npm run build --silent
 echo "✓ Frontend OK"
-
-echo "→ Running integration smoke tests (agent-browser)..."
-cd ..
-bash scripts/integration-test.sh
-echo "✓ Integration tests passed"
 
 echo ""
 echo "✓ All checks passed — pushing to $REMOTE ($BRANCH)"

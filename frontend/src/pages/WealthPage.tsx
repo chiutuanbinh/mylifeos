@@ -62,7 +62,7 @@ function TransactionsTab() {
           { label: 'Expenses', val: fmtVND(totalExpenses), color: '#ff4d4f' },
           { label: 'Net Cash', val: (totalIncome - totalExpenses >= 0 ? '' : '-') + fmtVND(totalIncome - totalExpenses), color: '#1677ff' },
         ].map((s, i) => (
-          <Col span={8} key={i}>
+          <Col xs={24} sm={8} key={i}>
             <Card size="small">
               <div style={{ fontSize: 12, color: '#999' }}>{s.label}</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.val}</div>
@@ -71,7 +71,7 @@ function TransactionsTab() {
         ))}
       </Row>
       <Card size="small" title="Transactions" extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>Add</Button>}>
-        {isLoading ? <Spin /> : <Table dataSource={txs} columns={columns} size="small" rowKey="id" pagination={{ pageSize: 20 }} />}
+        {isLoading ? <Spin /> : <Table dataSource={txs} columns={columns} size="small" rowKey="id" pagination={{ pageSize: 20 }} scroll={{ x: true }} />}
       </Card>
       <Modal title="Add Transaction" open={addOpen} onCancel={() => { setAddOpen(false); form.resetFields() }} footer={null}>
         <Form form={form} layout="vertical" onFinish={values => addMutation.mutate(values)}>
@@ -112,7 +112,7 @@ function BudgetsTab() {
               const spent = txs.filter(t => t.category === b.category && t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
               const pct = Math.min(Math.round(spent / b.monthly_limit * 100), 100)
               return (
-                <Col span={8} key={b.id}>
+                <Col xs={24} sm={8} key={b.id}>
                   <div style={{ fontSize: 12, marginBottom: 2 }}>{b.category} <span style={{ color: '#999' }}>{fmtVND(spent)} / {fmtVND(b.monthly_limit)}</span></div>
                   <Progress percent={pct} size="small" strokeColor={pct > 90 ? '#ff4d4f' : '#1677ff'} />
                 </Col>
@@ -240,19 +240,19 @@ function AssetsTab() {
   return (
     <>
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
-        <Col span={6}>
+        <Col xs={12} sm={6}>
           <Card size="small">
             <div style={{ fontSize: 12, color: '#999' }}>Total Assets</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: '#52c41a' }}>{fmtVND(grandTotal)}</div>
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={6}>
           <Card size="small">
             <div style={{ fontSize: 12, color: '#999' }}>Total Liabilities</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: '#ff4d4f' }}>{fmtVND(totalLiabilities)}</div>
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={6}>
           <Card size="small">
             <div style={{ fontSize: 12, color: '#999' }}>Net Worth</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: netWorth >= 0 ? '#1677ff' : '#ff4d4f' }}>{fmtVND(netWorth)}</div>
@@ -261,7 +261,7 @@ function AssetsTab() {
       </Row>
 
       <Card size="small" title="Assets" extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>Add</Button>}>
-        {isLoading ? <Spin /> : <Table dataSource={assets} columns={columns} size="small" rowKey="id" pagination={{ pageSize: 20 }} />}
+        {isLoading ? <Spin /> : <Table dataSource={assets} columns={columns} size="small" rowKey="id" pagination={{ pageSize: 20 }} scroll={{ x: true }} />}
       </Card>
 
       <Modal title="Add Asset" open={addOpen} onCancel={() => { setAddOpen(false); addForm.resetFields() }} footer={null}>
@@ -383,7 +383,7 @@ function LiabilitiesTab() {
   return (
     <>
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
-        <Col span={8}>
+        <Col xs={24} sm={8}>
           <Card size="small">
             <div style={{ fontSize: 12, color: '#999' }}>Total Liabilities</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: '#ff4d4f' }}>{fmtVND(totalBalance)}</div>
@@ -391,7 +391,7 @@ function LiabilitiesTab() {
         </Col>
       </Row>
       <Card size="small" title="Liabilities" extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>Add</Button>}>
-        {isLoading ? <Spin /> : <Table dataSource={liabilities} columns={columns} size="small" rowKey="id" pagination={{ pageSize: 20 }} />}
+        {isLoading ? <Spin /> : <Table dataSource={liabilities} columns={columns} size="small" rowKey="id" pagination={{ pageSize: 20 }} scroll={{ x: true }} />}
       </Card>
       <Modal title="Add Liability" open={addOpen} onCancel={() => { setAddOpen(false); addForm.resetFields() }} footer={null}>
         {liabilityFormFields(addForm, values => addMutation.mutate(values), addMutation.isPending)}
@@ -483,7 +483,7 @@ function TrendsTab() {
   return (
     <div>
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-        <Col span={6}>
+        <Col xs={12} sm={6}>
           <Card size="small">
             <div style={{ fontSize: 11, color: '#999' }}>Net Worth (30d)</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: '#1677ff' }}>
@@ -496,7 +496,7 @@ function TrendsTab() {
             )}
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={6}>
           <Card size="small">
             <div style={{ fontSize: 11, color: '#999' }}>VN-Index (1Y)</div>
             <div style={{ fontSize: 18, fontWeight: 700 }}>
@@ -509,7 +509,7 @@ function TrendsTab() {
             )}
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={6}>
           <Card size="small">
             <div style={{ fontSize: 11, color: '#999' }}>SJC Gold (1Y)</div>
             <div style={{ fontSize: 18, fontWeight: 700 }}>
@@ -522,7 +522,7 @@ function TrendsTab() {
             )}
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={6}>
           <Card size="small" style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', justifyContent: 'center' }}>
             <Button size="small" icon={<PlusOutlined />} onClick={() => setBackfillOpen(true)}>
               Add past data point
