@@ -19,6 +19,18 @@ if [[ "$BRANCH" == "main" ]]; then
   exit 1
 fi
 
+# Ensure branch is up to date with main.
+BASE_BRANCH="main"
+git fetch origin "$BASE_BRANCH" --quiet
+BEHIND=$(git rev-list --count HEAD..origin/"$BASE_BRANCH")
+if [[ "$BEHIND" -gt 0 ]]; then
+  echo ""
+  echo "✗ Branch is $BEHIND commit(s) behind origin/$BASE_BRANCH."
+  echo "  Run: git rebase origin/$BASE_BRANCH"
+  echo ""
+  exit 1
+fi
+
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 BACKEND="$REPO_ROOT/backend"
 COVERAGE="$BACKEND/coverage.out"
