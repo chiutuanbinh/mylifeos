@@ -18,3 +18,5 @@ frontend/.vite/
 
 # OS
 .DS_Store
+backend/coverage.out
+coverage.out
