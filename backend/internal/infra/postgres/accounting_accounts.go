@@ -27,7 +27,7 @@ func (r *pgAccountRepo) Save(ctx context.Context, a *accounting.Account) error {
 		INSERT INTO accounts (id, user_id, parent_id, name, type, currency, is_group, archived, sort_order)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 		ON CONFLICT (id) DO UPDATE SET
-			name=$4, type=$5, currency=$6, is_group=$7, archived=$8, sort_order=$9`,
+			parent_id=$3, name=$4, type=$5, currency=$6, is_group=$7, archived=$8, sort_order=$9`,
 		string(a.ID()), a.UserID(), parentID, a.Name(),
 		string(a.Type()), a.Currency(), a.IsGroup(), a.Archived(), a.SortOrder(),
 	)
