@@ -17,6 +17,7 @@ import {
 } from '../api/endpoints'
 import type { Transaction, Asset, Liability, BankRate, NewsItem } from '../api/types'
 import { NetWorthChart } from '../components/NetWorthChart'
+import { LiveNetWorthCard } from './LiveNetWorthCard'
 
 const fmtVND = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
 
@@ -483,6 +484,9 @@ function TrendsTab() {
   return (
     <div>
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={8}>
+          <LiveNetWorthCard />
+        </Col>
         <Col xs={12} sm={6}>
           <Card size="small">
             <div style={{ fontSize: 11, color: '#999' }}>Net Worth (30d)</div>

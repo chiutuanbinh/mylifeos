@@ -4,6 +4,7 @@ import { Row, Col, Card, Progress, Table, Tag, Spin } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { getDashboardSummary } from '../api/endpoints'
 import { Sparkline } from '../components/Sparkline'
+import { LiveNetWorthCard } from './LiveNetWorthCard'
 import type { Transaction } from '../api/types'
 
 const CAT_COLORS: Record<string, string> = {
@@ -57,6 +58,11 @@ export function DashboardPage() {
 
   return (
     <div>
+      <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+        <Col xs={24} sm={8}>
+          <LiveNetWorthCard />
+        </Col>
+      </Row>
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
         {stats.map((s, i) => (
           <Col xs={12} sm={6} key={i}>
