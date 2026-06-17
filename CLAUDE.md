@@ -10,7 +10,7 @@
 
 1. **Run backend tests** — must pass with ≥80% coverage **per file**:
    ```bash
-   cd backend && go test ./internal/handlers/... ./internal/middleware/... -coverprofile=coverage.out -covermode=atomic
+   cd backend && go test ./internal/transport/http/... ./internal/middleware/... -coverprofile=coverage.out -covermode=atomic
    bash scripts/hooks/pre-commit   # checks per-file ≥80%
    ```
 
@@ -42,7 +42,7 @@ GitHub will merge automatically when all CI checks pass.
 
 ## Test coverage rule
 
-Coverage gate is **≥80% per file** in `handlers` and `middleware` packages.
+Coverage gate is **≥80% per file** in `transport/http` and `middleware` packages.
 Enforced by `scripts/hooks/pre-commit` (git hook) and CI.
 If you add a new handler, add corresponding tests before the PR.
 
