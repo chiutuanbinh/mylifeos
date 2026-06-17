@@ -14,10 +14,12 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/infra/postgres"
+	infraevents "github.com/chiutuanbinh/mylifeos/backend/internal/infra/events"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/middleware"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/migrate"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/repo"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/scraper"
+	accountingsvc "github.com/chiutuanbinh/mylifeos/backend/internal/service/accounting"
 	dashboardsvc "github.com/chiutuanbinh/mylifeos/backend/internal/service/dashboard"
 	httphandler "github.com/chiutuanbinh/mylifeos/backend/internal/transport/http"
 )
@@ -57,6 +59,16 @@ func main() {
 
 	// scraperRepo uses the old repo interface expected by scraper.Run
 	scraperRepo := repo.NewTrendsRepo(db)
+
+	// Accounting repos, services, handlers
+	accountRepo     := postgres.NewAccountRepo(db)
+	journalRepo     := postgres.NewJournalRepo(db)
+	eventPub        := infraevents.NewInProcessPublisher()
+	accountSvc      := accountingsvc.NewAccountService(accountRepo)
+	journalSvc      := accountingsvc.NewJournalService(journalRepo, accountRepo, eventPub)
+	nwQuery         := accountingsvc.NewNetWorthQuery(accountRepo, journalRepo)
+	accountsHandler := httphandler.NewAccountsHandler(accountSvc)
+	journalHandler  := httphandler.NewJournalHandler(journalSvc, nwQuery)
 
 	// Services
 	dashSvc := dashboardsvc.New(assetRepo, liabRepo, txRepo, goalRepo, trendsRepo)
@@ -142,6 +154,11 @@ func main() {
 		r.Get("/bank-rates",           trendsHandler.ListBankRates)
 		r.Get("/news",                 trendsHandler.ListNews)
 		r.Post("/scrape",              trendsHandler.TriggerScrape)
+
+		r.Get("/accounts",           accountsHandler.List)
+		r.Post("/accounts",          accountsHandler.Create)
+		r.Post("/journal/entries",   journalHandler.RecordTransaction)
+		r.Get("/journal/networth",   journalHandler.NetWorth)
 	})
 
 	go func() {
