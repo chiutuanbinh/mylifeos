@@ -31,12 +31,22 @@ type testPublisher struct{}
 
 func (p *testPublisher) Publish(_ context.Context, _ accounting.DomainEvent) error { return nil }
 
+// newTestAccountRepoWithIDs returns a testAccountRepo pre-populated with accounts having the given IDs.
+func newTestAccountRepoWithIDs(userID string, ids ...string) *testAccountRepo {
+	r := newTestAccountRepo()
+	for _, id := range ids {
+		a := accounting.ReconstitueAccount(id, userID, nil, id, accounting.Asset, "VND", false, false, 0)
+		r.accounts[a.ID()] = a
+	}
+	return r
+}
+
 func TestJournalHandler_RecordTransaction_Balanced(t *testing.T) {
 	jRepo := &testJournalRepo{}
-	aRepo := newTestAccountRepo()
+	aRepo := newTestAccountRepoWithIDs("user1", "acc-food", "acc-visa")
 	pub := &testPublisher{}
 
-	journalSvc := accountingsvc.NewJournalService(jRepo, pub)
+	journalSvc := accountingsvc.NewJournalService(jRepo, aRepo, pub)
 	nwQuery := accountingsvc.NewNetWorthQuery(aRepo, jRepo)
 	h := httphandler.NewJournalHandler(journalSvc, nwQuery)
 
@@ -61,10 +71,10 @@ func TestJournalHandler_RecordTransaction_Balanced(t *testing.T) {
 
 func TestJournalHandler_RecordTransaction_UnbalancedReturns422(t *testing.T) {
 	jRepo := &testJournalRepo{}
-	aRepo := newTestAccountRepo()
+	aRepo := newTestAccountRepoWithIDs("user1", "a", "b")
 	pub := &testPublisher{}
 
-	journalSvc := accountingsvc.NewJournalService(jRepo, pub)
+	journalSvc := accountingsvc.NewJournalService(jRepo, aRepo, pub)
 	nwQuery := accountingsvc.NewNetWorthQuery(aRepo, jRepo)
 	h := httphandler.NewJournalHandler(journalSvc, nwQuery)
 
@@ -92,7 +102,7 @@ func TestJournalHandler_RecordTransaction_BadJSON(t *testing.T) {
 	aRepo := newTestAccountRepo()
 	pub := &testPublisher{}
 
-	journalSvc := accountingsvc.NewJournalService(jRepo, pub)
+	journalSvc := accountingsvc.NewJournalService(jRepo, aRepo, pub)
 	nwQuery := accountingsvc.NewNetWorthQuery(aRepo, jRepo)
 	h := httphandler.NewJournalHandler(journalSvc, nwQuery)
 
@@ -112,7 +122,7 @@ func TestJournalHandler_RecordTransaction_BadDate(t *testing.T) {
 	aRepo := newTestAccountRepo()
 	pub := &testPublisher{}
 
-	journalSvc := accountingsvc.NewJournalService(jRepo, pub)
+	journalSvc := accountingsvc.NewJournalService(jRepo, aRepo, pub)
 	nwQuery := accountingsvc.NewNetWorthQuery(aRepo, jRepo)
 	h := httphandler.NewJournalHandler(journalSvc, nwQuery)
 
@@ -138,7 +148,7 @@ func TestJournalHandler_NetWorth_ReturnsJSON(t *testing.T) {
 	aRepo := newTestAccountRepo()
 	pub := &testPublisher{}
 
-	journalSvc := accountingsvc.NewJournalService(jRepo, pub)
+	journalSvc := accountingsvc.NewJournalService(jRepo, aRepo, pub)
 	nwQuery := accountingsvc.NewNetWorthQuery(aRepo, jRepo)
 	h := httphandler.NewJournalHandler(journalSvc, nwQuery)
 

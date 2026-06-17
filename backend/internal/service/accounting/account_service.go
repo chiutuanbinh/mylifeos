@@ -22,6 +22,9 @@ func (s *AccountService) OpenAccount(ctx context.Context, cmd OpenAccountCmd) (a
 		if err != nil {
 			return "", err
 		}
+		if parent.UserID() != cmd.UserID {
+			return "", errors.New("parent account not found")
+		}
 		if !parent.IsGroup() {
 			return "", errors.New("parent account must be a group")
 		}

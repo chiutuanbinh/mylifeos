@@ -2,6 +2,7 @@ package accountingsvc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/domain/accounting"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/port/events"
@@ -9,12 +10,13 @@ import (
 )
 
 type JournalService struct {
-	journal repository.JournalRepo
-	pub     events.Publisher
+	journal  repository.JournalRepo
+	accounts repository.AccountRepo
+	pub      events.Publisher
 }
 
-func NewJournalService(journal repository.JournalRepo, pub events.Publisher) *JournalService {
-	return &JournalService{journal: journal, pub: pub}
+func NewJournalService(journal repository.JournalRepo, accounts repository.AccountRepo, pub events.Publisher) *JournalService {
+	return &JournalService{journal: journal, accounts: accounts, pub: pub}
 }
 
 func (s *JournalService) RecordTransaction(ctx context.Context, cmd RecordTransactionCmd) (accounting.EntryID, error) {
@@ -28,6 +30,21 @@ func (s *JournalService) RecordTransaction(ctx context.Context, cmd RecordTransa
 		}
 		if err := entry.AddLine(accounting.AccountID(l.AccountID), money, l.Side); err != nil {
 			return "", err
+		}
+	}
+
+	// validate all line accounts belong to this user
+	userAccounts, err := s.accounts.FindByUser(ctx, cmd.UserID)
+	if err != nil {
+		return "", err
+	}
+	owned := map[accounting.AccountID]bool{}
+	for _, a := range userAccounts {
+		owned[a.ID()] = true
+	}
+	for _, l := range cmd.Lines {
+		if !owned[accounting.AccountID(l.AccountID)] {
+			return "", fmt.Errorf("account %s does not belong to user", l.AccountID)
 		}
 	}
 

@@ -34,12 +34,24 @@ func (p *fakePublisher) Publish(_ context.Context, ev accounting.DomainEvent) er
 	return nil
 }
 
+// newFakeAccountRepoWithIDs builds a fakeAccountRepo pre-populated with accounts
+// owned by userID and having the given IDs.
+func newFakeAccountRepoWithIDs(userID string, ids ...string) *fakeAccountRepo {
+	r := &fakeAccountRepo{accounts: map[accounting.AccountID]*accounting.Account{}}
+	for _, id := range ids {
+		a := accounting.ReconstitueAccount(id, userID, nil, id, accounting.Asset, "VND", false, false, 0)
+		r.accounts[a.ID()] = a
+	}
+	return r
+}
+
 // --- tests ---
 
 func TestJournalService_RecordTransaction_Balanced(t *testing.T) {
 	repo := &fakeJournalRepo{}
 	pub := &fakePublisher{}
-	svc := accountingsvc.NewJournalService(repo, pub)
+	ar := newFakeAccountRepoWithIDs("user1", "account-food", "account-visa")
+	svc := accountingsvc.NewJournalService(repo, ar, pub)
 
 	cmd := accountingsvc.RecordTransactionCmd{
 		UserID:      "user1",
@@ -68,7 +80,8 @@ func TestJournalService_RecordTransaction_Balanced(t *testing.T) {
 func TestJournalService_RecordTransaction_UnbalancedReturnsError(t *testing.T) {
 	repo := &fakeJournalRepo{}
 	pub := &fakePublisher{}
-	svc := accountingsvc.NewJournalService(repo, pub)
+	ar := newFakeAccountRepoWithIDs("user1", "a", "b")
+	svc := accountingsvc.NewJournalService(repo, ar, pub)
 
 	cmd := accountingsvc.RecordTransactionCmd{
 		UserID:      "user1",
