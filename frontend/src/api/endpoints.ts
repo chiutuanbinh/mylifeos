@@ -3,6 +3,7 @@ import type {
   Transaction, Budget, Goal, KeyResult, KRLog,
   Note, Event, Asset, Liability, UserSettings, DashboardSummary,
   NetWorthSnapshot, BenchmarkData, BankRate, NewsItem,
+  Account, CreateAccountRequest, CreateJournalEntryRequest, NetWorthResult,
 } from './types'
 
 export const getDashboardSummary = () =>
@@ -110,3 +111,16 @@ export const updateLiability = (id: string, data: Partial<Omit<Liability, 'id' |
   apiClient.patch<Liability>(`/liabilities/${id}`, data).then(r => r.data)
 export const deleteLiability = (id: string) =>
   apiClient.delete(`/liabilities/${id}`)
+
+// Accounting
+export const getAccounts = () =>
+  apiClient.get<Account[]>('/accounts').then(r => r.data)
+
+export const createAccount = (data: CreateAccountRequest) =>
+  apiClient.post<Account>('/accounts', data).then(r => r.data)
+
+export const createJournalEntry = (data: CreateJournalEntryRequest) =>
+  apiClient.post<{ id: string }>('/journal/entries', data).then(r => r.data)
+
+export const getJournalNetWorth = () =>
+  apiClient.get<NetWorthResult>('/journal/networth').then(r => r.data)
