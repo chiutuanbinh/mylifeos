@@ -9,7 +9,7 @@ COVERAGE="$BACKEND/coverage.out"
 echo "→ Running backend coverage check..."
 
 cd "$BACKEND"
-go test ./internal/handlers/... ./internal/middleware/... \
+go test ./internal/transport/http/... ./internal/middleware/... \
   -coverprofile="$COVERAGE" -covermode=atomic -count=1 2>/dev/null
 
 python3 - "$COVERAGE" <<'EOF'
