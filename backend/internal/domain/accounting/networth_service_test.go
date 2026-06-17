@@ -31,7 +31,10 @@ func TestNetWorthService_Calculate(t *testing.T) {
 	lines = append(lines, e2.Lines()...)
 
 	svc := accounting.NetWorthService{}
-	nw := svc.Calculate([]*accounting.Account{cash, visa, salary, food}, lines)
+	nw, err := svc.Calculate([]*accounting.Account{cash, visa, salary, food}, lines)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// Cash = 10M (asset), Visa = 150k (liability)
 	// Net worth = 10M - 150k = 9,850,000
@@ -51,7 +54,10 @@ func TestNetWorthService_SkipsGroupAccounts(t *testing.T) {
 	e.Post()
 
 	svc := accounting.NetWorthService{}
-	nw := svc.Calculate([]*accounting.Account{group, leaf}, e.Lines())
+	nw, err := svc.Calculate([]*accounting.Account{group, leaf}, e.Lines())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// group skipped, leaf = 100 asset
 	if !nw.Amount.Equal(decimal.NewFromInt(100)) {

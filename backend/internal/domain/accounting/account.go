@@ -1,5 +1,7 @@
 package accounting
 
+import "fmt"
+
 type AccountID string
 type AccountType string
 type Side string
@@ -47,7 +49,7 @@ func NewAccount(userID string, parentID *string, name string, acctType AccountTy
 	}
 }
 
-func ReconstitueAccount(id, userID string, parentID *string, name string, acctType AccountType, currency string, isGroup, archived bool, sortOrder int) *Account {
+func ReconstituteAccount(id, userID string, parentID *string, name string, acctType AccountType, currency string, isGroup, archived bool, sortOrder int) *Account {
 	var pid *AccountID
 	if parentID != nil {
 		p := AccountID(*parentID)
@@ -85,18 +87,26 @@ func (a *Account) NormalBalance() Side {
 	}
 }
 
-func (a *Account) Balance(lines []JournalLine) Money {
+func (a *Account) Balance(lines []JournalLine) (Money, error) {
 	normal := a.NormalBalance()
-	total := zeroDecimal()
+	total := Money{Amount: zeroDecimal(), Currency: a.currency}
 	for _, l := range lines {
 		if l.AccountID() != a.id {
 			continue
 		}
+		lineAmount := Money{Amount: l.Money().Amount, Currency: l.Money().Currency}
+		var err error
 		if l.Side() == normal {
-			total = total.Add(l.Money().Amount)
+			total, err = total.Add(lineAmount)
 		} else {
-			total = total.Sub(l.Money().Amount)
+			if total.Currency != lineAmount.Currency {
+				return Money{}, fmt.Errorf("currency mismatch in account %s: %s vs %s", a.id, total.Currency, lineAmount.Currency)
+			}
+			total = Money{Amount: total.Amount.Sub(lineAmount.Amount), Currency: total.Currency}
+		}
+		if err != nil {
+			return Money{}, fmt.Errorf("currency mismatch in account %s: %w", a.id, err)
 		}
 	}
-	return Money{Amount: total, Currency: a.currency}
+	return total, nil
 }

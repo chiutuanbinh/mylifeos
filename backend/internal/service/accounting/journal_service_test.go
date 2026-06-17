@@ -39,7 +39,7 @@ func (p *fakePublisher) Publish(_ context.Context, ev accounting.DomainEvent) er
 func newFakeAccountRepoWithIDs(userID string, ids ...string) *fakeAccountRepo {
 	r := &fakeAccountRepo{accounts: map[accounting.AccountID]*accounting.Account{}}
 	for _, id := range ids {
-		a := accounting.ReconstitueAccount(id, userID, nil, id, accounting.Asset, "VND", false, false, 0)
+		a := accounting.ReconstituteAccount(id, userID, nil, id, accounting.Asset, "VND", false, false, 0)
 		r.accounts[a.ID()] = a
 	}
 	return r

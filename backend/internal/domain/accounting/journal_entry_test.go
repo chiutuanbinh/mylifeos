@@ -83,7 +83,10 @@ func TestAccount_Balance_WithRealLines(t *testing.T) {
 	entry.AddLine("other", mustMoney(500, "VND"), accounting.Credit)
 	entry.Post()
 
-	bal := a.Balance(entry.Lines())
+	bal, err := a.Balance(entry.Lines())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !bal.Amount.Equal(decimal.NewFromInt(500)) {
 		t.Errorf("want 500, got %s", bal.Amount)
 	}

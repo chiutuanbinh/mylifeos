@@ -30,5 +30,5 @@ func (q *NetWorthQuery) Current(ctx context.Context, userID string) (accounting.
 	for _, e := range entries {
 		lines = append(lines, e.Lines()...)
 	}
-	return accounting.NetWorthService{}.Calculate(accounts, lines), nil
+	return accounting.NetWorthService{}.Calculate(accounts, lines)
 }

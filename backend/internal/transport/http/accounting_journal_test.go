@@ -35,7 +35,7 @@ func (p *testPublisher) Publish(_ context.Context, _ accounting.DomainEvent) err
 func newTestAccountRepoWithIDs(userID string, ids ...string) *testAccountRepo {
 	r := newTestAccountRepo()
 	for _, id := range ids {
-		a := accounting.ReconstitueAccount(id, userID, nil, id, accounting.Asset, "VND", false, false, 0)
+		a := accounting.ReconstituteAccount(id, userID, nil, id, accounting.Asset, "VND", false, false, 0)
 		r.accounts[a.ID()] = a
 	}
 	return r

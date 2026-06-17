@@ -79,7 +79,7 @@ func scanAccounts(rows pgx.Rows) ([]*accounting.Account, error) {
 		if err := rows.Scan(&id, &userID, &parentID, &name, &acctType, &currency, &isGroup, &archived, &sortOrder); err != nil {
 			return nil, err
 		}
-		result = append(result, accounting.ReconstitueAccount(
+		result = append(result, accounting.ReconstituteAccount(
 			id, userID, parentID, name,
 			accounting.AccountType(acctType), currency, isGroup, archived, sortOrder,
 		))

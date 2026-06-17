@@ -90,7 +90,7 @@ func reconstituteEntries(rows pgx.Rows) ([]*accounting.JournalEntry, error) {
 			return nil, err
 		}
 		if _, exists := entries[eID]; !exists {
-			entries[eID] = accounting.ReconstitueEntry(eID, eUserID, eDate, eDesc, eMemo)
+			entries[eID] = accounting.ReconstituteEntry(eID, eUserID, eDate, eDesc, eMemo)
 			order = append(order, eID)
 		}
 		entries[eID].ReconstituteLine(

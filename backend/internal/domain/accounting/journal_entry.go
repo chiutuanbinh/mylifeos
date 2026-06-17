@@ -43,7 +43,7 @@ func NewJournalEntry(userID string, date time.Time, description string) *Journal
 	}
 }
 
-func ReconstitueEntry(id, userID string, date time.Time, desc, memo string) *JournalEntry {
+func ReconstituteEntry(id, userID string, date time.Time, desc, memo string) *JournalEntry {
 	return &JournalEntry{
 		id:          EntryID(id),
 		userID:      userID,
