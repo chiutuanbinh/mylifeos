@@ -48,6 +48,18 @@ func (s *JournalService) RecordTransaction(ctx context.Context, cmd RecordTransa
 		}
 	}
 
+	// load full account objects for group check
+	accountMap := map[accounting.AccountID]*accounting.Account{}
+	for _, a := range userAccounts {
+		accountMap[a.ID()] = a
+	}
+	for _, l := range cmd.Lines {
+		acct := accountMap[accounting.AccountID(l.AccountID)]
+		if acct.IsGroup() {
+			return "", fmt.Errorf("account %s is a group account and cannot receive journal lines", l.AccountID)
+		}
+	}
+
 	if err := entry.Post(); err != nil {
 		return "", err
 	}
