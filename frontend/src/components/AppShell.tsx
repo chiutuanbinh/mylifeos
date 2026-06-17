@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Avatar, Badge, Space, Button, Breadcrumb, Typography } from 'antd'
+import { Layout, Menu, Avatar, Badge, Space, Button, Breadcrumb, Typography, Grid } from 'antd'
 import {
   DashboardOutlined, DollarOutlined, TrophyOutlined,
   CalendarOutlined, SettingOutlined,
@@ -18,6 +18,14 @@ const NAV = [
   { key: '/settings', icon: <SettingOutlined />,  label: 'Settings' },
 ]
 
+const BOTTOM_NAV = [
+  { key: '/',           icon: <DashboardOutlined />, label: 'Home' },
+  { key: '/wealth',     icon: <DollarOutlined />,   label: 'Wealth' },
+  { key: '/objectives', icon: <TrophyOutlined />,   label: 'Goals' },
+  { key: '/calendar',   icon: <CalendarOutlined />, label: 'Calendar' },
+  { key: '/settings',   icon: <SettingOutlined />,  label: 'Settings' },
+]
+
 const TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/wealth': 'Wealth',
@@ -31,6 +39,45 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
   const signOut = useAuthStore(s => s.signOut)
+  const { xs } = Grid.useBreakpoint()
+  const isMobile = !!xs
+
+  if (isMobile) {
+    return (
+      <Layout style={{ minHeight: '100vh' }}>
+        <Layout.Header style={{ background: '#fff', padding: '0 12px', height: 48, lineHeight: '48px', borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, zIndex: 99, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 24, height: 24, borderRadius: 5, background: 'linear-gradient(135deg, #1677ff, #0952c6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 800 }}>M</div>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>{TITLES[location.pathname] || 'MyLifeOS'}</span>
+          </div>
+          <Space size={4}>
+            <Badge count={0} size="small">
+              <Button type="text" size="small" icon={<BellOutlined />} />
+            </Badge>
+            <Button type="text" size="small" icon={<LogoutOutlined />} onClick={() => signOut()} />
+          </Space>
+        </Layout.Header>
+        <Layout.Content style={{ padding: 12, background: '#f0f2f5', minHeight: 'calc(100vh - 48px - 56px)', paddingBottom: 68 }}>
+          {children}
+        </Layout.Content>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 56, background: '#fff', borderTop: '1px solid #f0f0f0', display: 'flex', zIndex: 100 }}>
+          {BOTTOM_NAV.map(item => {
+            const active = location.pathname === item.key
+            return (
+              <button
+                key={item.key}
+                onClick={() => navigate(item.key)}
+                style={{ flex: 1, border: 'none', background: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: 'pointer', color: active ? '#1677ff' : '#999', fontSize: 10, fontWeight: active ? 600 : 400, padding: 0 }}
+              >
+                <span style={{ fontSize: 18 }}>{item.icon}</span>
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+      </Layout>
+    )
+  }
 
   return (
     <Layout style={{ minHeight: '100vh' }}>

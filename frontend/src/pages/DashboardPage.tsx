@@ -59,7 +59,7 @@ export function DashboardPage() {
     <div>
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
         {stats.map((s, i) => (
-          <Col span={6} key={i}>
+          <Col xs={12} sm={6} key={i}>
             <Card size="small" hoverable style={{ cursor: 'pointer' }} onClick={() => navigate(s.nav)}>
               <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>{s.label}</div>
               <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>{s.val}</div>
