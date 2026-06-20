@@ -67,7 +67,7 @@ func main() {
 	accountSvc      := accountingsvc.NewAccountService(accountRepo)
 	journalSvc      := accountingsvc.NewJournalService(journalRepo, accountRepo, eventPub)
 	nwQuery         := accountingsvc.NewNetWorthQuery(accountRepo, journalRepo)
-	accountsHandler := httphandler.NewAccountsHandler(accountSvc)
+	accountsHandler := httphandler.NewAccountsHandler(accountSvc, journalRepo)
 	journalHandler  := httphandler.NewJournalHandler(journalSvc, nwQuery)
 
 	// Services

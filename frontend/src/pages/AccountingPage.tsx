@@ -103,6 +103,26 @@ function SetupWizard({ open, onDone }: { open: boolean; onDone: () => void }) {
   )
 }
 
+type AccountTreeNode = Account & { children?: AccountTreeNode[] }
+
+function buildTree(accounts: Account[]): AccountTreeNode[] {
+  const byId = new Map(accounts.map(a => [a.id, { ...a, children: [] as AccountTreeNode[] }]))
+  const roots: AccountTreeNode[] = []
+  for (const node of byId.values()) {
+    if (node.parent_id && byId.has(node.parent_id)) {
+      byId.get(node.parent_id)!.children!.push(node)
+    } else {
+      roots.push(node)
+    }
+  }
+  // strip empty children arrays so Ant Design doesn't show expand icon
+  const clean = (n: AccountTreeNode): AccountTreeNode => ({
+    ...n,
+    children: n.children && n.children.length > 0 ? n.children.map(clean) : undefined,
+  })
+  return roots.map(clean).sort((a, b) => a.sort_order - b.sort_order)
+}
+
 function AccountsTab() {
   const [addOpen, setAddOpen] = useState(false)
   const [wizardDone, setWizardDone] = useState(false)
@@ -124,13 +144,17 @@ function AccountsTab() {
   })
 
   const groupAccounts = accounts.filter(a => a.is_group)
+  const treeData = buildTree(accounts)
+  const defaultExpandedKeys = accounts.filter(a => a.is_group).map(a => a.id)
 
-  const columns: ColumnsType<Account> = [
+  const columns: ColumnsType<AccountTreeNode> = [
     {
       title: 'Name', dataIndex: 'name',
       render: (name, row) => (
         <span>
-          {row.is_group ? <FolderOutlined style={{ marginRight: 6, color: '#faad14' }} /> : <FileOutlined style={{ marginRight: 6, color: '#8c8c8c' }} />}
+          {row.is_group
+            ? <FolderOutlined style={{ marginRight: 6, color: '#faad14' }} />
+            : <FileOutlined style={{ marginRight: 6, color: '#8c8c8c' }} />}
           {name}
           {row.archived && <Badge count="archived" style={{ marginLeft: 8, backgroundColor: '#d9d9d9', color: '#595959', fontSize: 10 }} />}
         </span>
@@ -142,8 +166,12 @@ function AccountsTab() {
     },
     { title: 'Currency', dataIndex: 'currency', width: 90 },
     {
-      title: 'Parent', dataIndex: 'parent_id', width: 160,
-      render: pid => accounts.find(a => a.id === pid)?.name ?? '—',
+      title: 'Balance', dataIndex: 'balance', width: 160, align: 'right',
+      render: (bal: number, row) => (
+        <span style={{ fontWeight: row.is_group ? 600 : 400 }}>
+          {fmtVND(String(bal))}
+        </span>
+      ),
     },
   ]
 
@@ -162,13 +190,14 @@ function AccountsTab() {
         }
       >
         {isLoading ? <Spin /> : (
-          <Table
-            dataSource={accounts}
+          <Table<AccountTreeNode>
+            dataSource={treeData}
             columns={columns}
             size="small"
             rowKey="id"
             pagination={false}
             scroll={{ x: true }}
+            expandable={{ defaultExpandedRowKeys: defaultExpandedKeys }}
           />
         )}
       </Card>
