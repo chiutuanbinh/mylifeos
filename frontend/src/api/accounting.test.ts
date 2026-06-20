@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getAccounts, createAccount, createJournalEntry, getJournalNetWorth } from './endpoints'
 import { apiClient } from './client'
-import type { NetWorthResult, CreateJournalEntryRequest } from './types'
+import type { Account, NetWorthResult, CreateJournalEntryRequest } from './types'
 
 vi.mock('./client', () => ({
   apiClient: {
