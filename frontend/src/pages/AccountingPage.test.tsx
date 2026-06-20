@@ -42,10 +42,7 @@ describe('AccountingPage — Accounts tab', () => {
 
   it('calls createAccount on form submit', async () => {
     mockGetAccounts.mockResolvedValue([])
-    mockCreateAccount.mockResolvedValueOnce(
-      { id: 'a3', user_id: 'u1', parent_id: null, name: 'Savings',
-        type: 'asset', currency: 'VND', is_group: false, archived: false, sort_order: 1 }
-    )
+    mockCreateAccount.mockResolvedValueOnce({ id: 'a3' })
     wrap(<AccountingPage />)
     await waitFor(() => screen.getByRole('button', { name: /add account/i }))
     fireEvent.click(screen.getByRole('button', { name: /add account/i }))
