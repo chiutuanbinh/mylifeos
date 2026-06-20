@@ -154,6 +154,7 @@ export interface Account {
   is_group: boolean
   archived: boolean
   sort_order: number
+  balance: number
 }
 
 export interface JournalLine {

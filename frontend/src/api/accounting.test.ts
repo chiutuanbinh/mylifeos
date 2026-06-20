@@ -19,7 +19,7 @@ describe('getAccounts', () => {
   it('calls GET /accounts and returns data', async () => {
     const accounts: Account[] = [
       { id: 'a1', user_id: 'u1', parent_id: null, name: 'Checking', type: 'asset',
-        currency: 'VND', is_group: false, archived: false, sort_order: 0 },
+        currency: 'VND', is_group: false, archived: false, sort_order: 0, balance: 0 },
     ]
     mockGet.mockResolvedValueOnce({ data: accounts })
     const result = await getAccounts()
