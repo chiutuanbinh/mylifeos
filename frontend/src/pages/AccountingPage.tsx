@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Tabs, Card, Table, Tag, Button, Form, Input, Select, Switch,
-  InputNumber, Modal, Spin, Badge,
+  InputNumber, Modal, Spin, Badge, Checkbox,
 } from 'antd'
 import { PlusOutlined, FolderOutlined, FileOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
@@ -15,8 +15,97 @@ const TYPE_COLORS: Record<string, string> = {
 
 const fmtVND = (s: string) => `₫${Math.round(Math.abs(parseFloat(s))).toLocaleString('vi-VN')}`
 
+const DEFAULT_GROUPS: CreateAccountRequest[] = [
+  { name: 'Assets',      type: 'asset',     currency: 'VND', is_group: true, sort_order: 0, parent_id: null },
+  { name: 'Liabilities', type: 'liability', currency: 'VND', is_group: true, sort_order: 1, parent_id: null },
+  { name: 'Equity',      type: 'equity',    currency: 'VND', is_group: true, sort_order: 2, parent_id: null },
+  { name: 'Income',      type: 'income',    currency: 'VND', is_group: true, sort_order: 3, parent_id: null },
+  { name: 'Expenses',    type: 'expense',   currency: 'VND', is_group: true, sort_order: 4, parent_id: null },
+]
+
+type LeafDef = { name: string; type: CreateAccountRequest['type']; parentGroup: string; sortOrder: number }
+
+const DEFAULT_LEAVES: LeafDef[] = [
+  { name: 'Cash',            type: 'asset',     parentGroup: 'Assets',      sortOrder: 0 },
+  { name: 'Bank Account',    type: 'asset',     parentGroup: 'Assets',      sortOrder: 1 },
+  { name: 'Credit Card',     type: 'liability', parentGroup: 'Liabilities', sortOrder: 0 },
+  { name: 'Opening Balance', type: 'equity',    parentGroup: 'Equity',      sortOrder: 0 },
+  { name: 'Salary',          type: 'income',    parentGroup: 'Income',      sortOrder: 0 },
+  { name: 'Living Expenses', type: 'expense',   parentGroup: 'Expenses',    sortOrder: 0 },
+]
+
+function SetupWizard({ open, onDone }: { open: boolean; onDone: () => void }) {
+  const [selected, setSelected] = useState<string[]>(DEFAULT_LEAVES.map(l => l.name))
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const qc = useQueryClient()
+
+  const toggle = (name: string, checked: boolean) => {
+    setSelected(prev => checked ? [...prev, name] : prev.filter(n => n !== name))
+  }
+
+  const handleSetUp = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const groups = await Promise.all(DEFAULT_GROUPS.map(g => createAccount(g)))
+      const groupMap: Record<string, string> = {}
+      DEFAULT_GROUPS.forEach((g, i) => { groupMap[g.name] = groups[i].id })
+
+      const chosenLeaves = DEFAULT_LEAVES.filter(l => selected.includes(l.name))
+      await Promise.all(chosenLeaves.map(l => createAccount({
+        name: l.name,
+        type: l.type,
+        currency: 'VND',
+        is_group: false,
+        sort_order: l.sortOrder,
+        parent_id: groupMap[l.parentGroup],
+      })))
+
+      await qc.invalidateQueries({ queryKey: ['accounts'] })
+      onDone()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create accounts. Please retry.')
+      setLoading(false)
+    }
+  }
+
+  if (!open) return null
+
+  return (
+    <Modal
+      open={open}
+      title="Set up your accounts"
+      footer={null}
+      closable={false}
+      maskClosable={false}
+    >
+      <p style={{ color: '#666', marginBottom: 16 }}>
+        We'll create a starter chart of accounts. Uncheck any you don't need.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+        {DEFAULT_LEAVES.map(l => (
+          <Checkbox
+            key={l.name}
+            checked={selected.includes(l.name)}
+            onChange={e => toggle(l.name, e.target.checked)}
+          >
+            {l.name} <Tag color={TYPE_COLORS[l.type]}>{l.type}</Tag>
+          </Checkbox>
+        ))}
+      </div>
+      {error && <div style={{ color: '#ff4d4f', marginBottom: 12 }}>{error}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Button type="link" onClick={onDone} disabled={loading}>Skip</Button>
+        <Button type="primary" loading={loading} onClick={handleSetUp}>Set Up</Button>
+      </div>
+    </Modal>
+  )
+}
+
 function AccountsTab() {
   const [addOpen, setAddOpen] = useState(false)
+  const [wizardDone, setWizardDone] = useState(false)
   const [form] = Form.useForm()
   const qc = useQueryClient()
 
@@ -58,8 +147,11 @@ function AccountsTab() {
     },
   ]
 
+  const showWizard = !isLoading && accounts.length === 0 && !wizardDone
+
   return (
     <>
+      <SetupWizard open={showWizard} onDone={() => setWizardDone(true)} />
       <Card
         size="small"
         title="Chart of Accounts"

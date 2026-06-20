@@ -117,7 +117,7 @@ export const getAccounts = () =>
   apiClient.get<Account[]>('/accounts').then(r => r.data)
 
 export const createAccount = (data: CreateAccountRequest) =>
-  apiClient.post<Account>('/accounts', data).then(r => r.data)
+  apiClient.post<{ id: string }>('/accounts', data).then(r => r.data)
 
 export const createJournalEntry = (data: CreateJournalEntryRequest) =>
   apiClient.post<{ id: string }>('/journal/entries', data).then(r => r.data)

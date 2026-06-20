@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS journal_lines (
   id          uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
   entry_id    uuid         NOT NULL REFERENCES journal_entries(id) ON DELETE CASCADE,
   account_id  uuid         NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
-  amount      numeric(15,2) NOT NULL CHECK (amount > 0),
+  amount      numeric(20,2) NOT NULL CHECK (amount > 0),
   currency    text         NOT NULL DEFAULT 'VND',
   side        journal_side NOT NULL
 );

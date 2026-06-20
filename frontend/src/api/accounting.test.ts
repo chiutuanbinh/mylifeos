@@ -32,7 +32,7 @@ describe('createAccount', () => {
   it('calls POST /accounts with payload', async () => {
     const payload = { name: 'Savings', type: 'asset' as const, currency: 'VND',
       is_group: false, sort_order: 1, parent_id: null }
-    const created: Account = { id: 'a2', user_id: 'u1', ...payload, archived: false }
+    const created = { id: 'a2' }
     mockPost.mockResolvedValueOnce({ data: created })
     const result = await createAccount(payload)
     expect(mockPost).toHaveBeenCalledWith('/accounts', payload)
