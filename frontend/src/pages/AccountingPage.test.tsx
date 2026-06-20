@@ -56,3 +56,42 @@ describe('AccountingPage — Accounts tab', () => {
     ))
   })
 })
+
+describe('AccountingPage — SetupWizard', () => {
+  it('shows setup wizard when accounts list is empty', async () => {
+    mockGetAccounts.mockResolvedValueOnce([])
+    wrap(<AccountingPage />)
+    await waitFor(() =>
+      expect(screen.getByText(/set up your accounts/i)).toBeInTheDocument()
+    )
+  })
+
+  it('does not show wizard when accounts exist', async () => {
+    mockGetAccounts.mockResolvedValueOnce(sampleAccounts)
+    wrap(<AccountingPage />)
+    await waitFor(() => screen.getByText('Cash'))
+    expect(screen.queryByText(/set up your accounts/i)).not.toBeInTheDocument()
+  })
+
+  it('dismisses wizard on Skip', async () => {
+    mockGetAccounts.mockResolvedValueOnce([])
+    wrap(<AccountingPage />)
+    await waitFor(() => screen.getByText(/set up your accounts/i))
+    fireEvent.click(screen.getByRole('button', { name: /skip/i }))
+    await waitFor(() =>
+      expect(screen.queryByText(/set up your accounts/i)).not.toBeInTheDocument()
+    )
+  })
+
+  it('renders all default leaf accounts as checked checkboxes', async () => {
+    mockGetAccounts.mockResolvedValueOnce([])
+    wrap(<AccountingPage />)
+    await waitFor(() => screen.getByText(/set up your accounts/i))
+    expect(screen.getByLabelText(/cash/i)).toBeChecked()
+    expect(screen.getByLabelText(/bank account/i)).toBeChecked()
+    expect(screen.getByLabelText(/credit card/i)).toBeChecked()
+    expect(screen.getByLabelText(/opening balance/i)).toBeChecked()
+    expect(screen.getByLabelText(/salary/i)).toBeChecked()
+    expect(screen.getByLabelText(/living expenses/i)).toBeChecked()
+  })
+})
