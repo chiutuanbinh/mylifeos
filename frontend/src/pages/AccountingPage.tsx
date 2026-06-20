@@ -2,12 +2,16 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Tabs, Card, Table, Tag, Button, Form, Input, Select, Switch,
-  InputNumber, Modal, Spin, Badge, Checkbox,
+  InputNumber, Modal, Spin, Badge, Checkbox, Radio,
 } from 'antd'
 import { PlusOutlined, FolderOutlined, FileOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { getAccounts, createAccount, createJournalEntry, getJournalNetWorth } from '../api/endpoints'
 import type { Account, CreateAccountRequest, CreateJournalEntryRequest } from '../api/types'
+
+function normalSide(type: Account['type']): 'debit' | 'credit' {
+  return type === 'asset' || type === 'expense' ? 'debit' : 'credit'
+}
 
 const TYPE_COLORS: Record<string, string> = {
   asset: 'green', liability: 'red', equity: 'blue', income: 'cyan', expense: 'orange',
@@ -327,41 +331,113 @@ function JournalTab() {
           </Form.Item>
 
           <Form.List name="lines">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map((field, idx) => (
-                  <Card key={field.key} size="small" style={{ marginBottom: 8 }}
-                    title={`Line ${idx + 1}`}
-                    extra={fields.length > 2 && (
-                      <Button type="text" size="small" danger onClick={() => remove(field.name)}>Remove</Button>
-                    )}
-                  >
-                    <Form.Item name={[field.name, 'account_id']} label="Account" rules={[{ required: true }]}>
-                      <Select
-                        showSearch
-                        optionFilterProp="label"
-                        options={leafAccounts.map(a => ({ value: a.id, label: `${a.name} (${a.type})` }))}
-                      />
-                    </Form.Item>
-                    <Form.Item name={[field.name, 'amount']} label="Amount (VND)" rules={[{ required: true }]}>
-                      <InputNumber min={1} style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Form.Item name={[field.name, 'side']} label="Side" rules={[{ required: true }]}>
-                      <Select options={[{ value: 'debit', label: 'Debit' }, { value: 'credit', label: 'Credit' }]} />
-                    </Form.Item>
-                  </Card>
-                ))}
-                <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add({ side: 'debit' })}>
-                  Add Line
-                </Button>
-              </>
-            )}
+            {(fields, { add, remove }) => {
+              const lines: { account_id?: string; amount?: number; side?: 'debit' | 'credit' }[] =
+                form.getFieldValue('lines') ?? []
+              const drTotal = lines.reduce((s, l) => l.side === 'debit' ? s + (l.amount ?? 0) : s, 0)
+              const crTotal = lines.reduce((s, l) => l.side === 'credit' ? s + (l.amount ?? 0) : s, 0)
+              const balanced = drTotal > 0 && drTotal === crTotal
+
+              return (
+                <>
+                  {/* Header row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 80px 32px', gap: 8, marginBottom: 4, padding: '0 4px' }}>
+                    <span style={{ fontSize: 12, color: '#8c8c8c' }}>Account</span>
+                    <span style={{ fontSize: 12, color: '#8c8c8c' }}>Amount (VND)</span>
+                    <span style={{ fontSize: 12, color: '#8c8c8c' }}>DR / CR</span>
+                    <span />
+                  </div>
+
+                  {fields.map((field) => (
+                    <div key={field.key} style={{ display: 'grid', gridTemplateColumns: '1fr 160px 80px 32px', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
+                      <Form.Item name={[field.name, 'account_id']} style={{ margin: 0 }} rules={[{ required: true, message: 'Required' }]}>
+                        <Select
+                          showSearch
+                          optionFilterProp="label"
+                          placeholder="Account"
+                          options={leafAccounts.map(a => ({
+                            value: a.id,
+                            label: `${a.name} (${a.type} · ${normalSide(a.type) === 'debit' ? 'DR+' : 'CR+'})`,
+                          }))}
+                          onChange={(accountId: string) => {
+                            const acct = leafAccounts.find(a => a.id === accountId)
+                            if (!acct) return
+                            const side = normalSide(acct.type)
+                            const currentLines: { account_id?: string; amount?: number; side?: 'debit' | 'credit' }[] =
+                              form.getFieldValue('lines')
+                            // set this line's side to the account's normal side
+                            currentLines[field.name] = { ...currentLines[field.name], side }
+                            form.setFieldsValue({ lines: currentLines })
+                            // if this is the first line and there's only one line, add a second with opposite side
+                            if (field.name === 0 && fields.length === 1) {
+                              add({ side: side === 'debit' ? 'credit' : 'debit' })
+                            }
+                          }}
+                        />
+                      </Form.Item>
+
+                      <Form.Item name={[field.name, 'amount']} style={{ margin: 0 }} rules={[{ required: true, message: 'Required' }]}>
+                        <InputNumber min={1} style={{ width: '100%' }} placeholder="0" />
+                      </Form.Item>
+
+                      <Form.Item name={[field.name, 'side']} style={{ margin: 0 }} rules={[{ required: true, message: 'Required' }]}>
+                        <Radio.Group size="small">
+                          <Radio.Button value="debit">DR</Radio.Button>
+                          <Radio.Button value="credit">CR</Radio.Button>
+                        </Radio.Group>
+                      </Form.Item>
+
+                      <Button
+                        type="text"
+                        size="small"
+                        danger
+                        disabled={fields.length <= 2}
+                        onClick={() => remove(field.name)}
+                        style={{ marginTop: 4 }}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+
+                  <Button type="dashed" block icon={<PlusOutlined />} onClick={() => {
+                    const currentLines: { side?: 'debit' | 'credit' }[] = form.getFieldValue('lines') ?? []
+                    const drCount = currentLines.filter(l => l.side === 'debit').length
+                    const crCount = currentLines.filter(l => l.side === 'credit').length
+                    add({ side: drCount <= crCount ? 'debit' : 'credit' })
+                  }} style={{ marginBottom: 12 }}>
+                    Add Line
+                  </Button>
+
+                  {/* Balance indicator */}
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'center', padding: '8px 4px', background: '#fafafa', borderRadius: 6, marginBottom: 8 }}>
+                    <span style={{ fontSize: 12 }}>DR <b style={{ color: '#1677ff' }}>₫{Math.round(drTotal).toLocaleString('vi-VN')}</b></span>
+                    <span style={{ fontSize: 12 }}>CR <b style={{ color: '#1677ff' }}>₫{Math.round(crTotal).toLocaleString('vi-VN')}</b></span>
+                    {balanced
+                      ? <span style={{ fontSize: 12, color: '#52c41a' }}>✓ Balanced</span>
+                      : drTotal + crTotal > 0
+                        ? <span style={{ fontSize: 12, color: '#ff4d4f' }}>₫{Math.round(Math.abs(drTotal - crTotal)).toLocaleString('vi-VN')} unbalanced</span>
+                        : null}
+                  </div>
+                </>
+              )
+            }}
           </Form.List>
 
-          <Form.Item style={{ marginTop: 16 }}>
-            <Button type="primary" htmlType="submit" loading={recordMutation.isPending} block>
-              Post Entry
-            </Button>
+          <Form.Item style={{ marginTop: 8 }}>
+            <Form.Item noStyle shouldUpdate>
+              {() => {
+                const lines: { amount?: number; side?: 'debit' | 'credit' }[] = form.getFieldValue('lines') ?? []
+                const dr = lines.reduce((s, l) => l.side === 'debit' ? s + (l.amount ?? 0) : s, 0)
+                const cr = lines.reduce((s, l) => l.side === 'credit' ? s + (l.amount ?? 0) : s, 0)
+                const balanced = dr > 0 && dr === cr
+                return (
+                  <Button type="primary" htmlType="submit" loading={recordMutation.isPending} block disabled={!balanced}>
+                    Post Entry
+                  </Button>
+                )
+              }}
+            </Form.Item>
           </Form.Item>
         </Form>
       </Modal>

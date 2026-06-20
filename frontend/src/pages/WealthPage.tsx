@@ -8,10 +8,10 @@ import type { FormInstance } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, LineChartOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import {
-  getTransactions, createTransaction, deleteTransaction,
+  getTransactions, deleteTransaction,
   getBudgets, upsertBudget,
-  getAssets, createAsset, updateAsset, deleteAsset,
-  getLiabilities, createLiability, updateLiability, deleteLiability,
+  getAssets, updateAsset, deleteAsset,
+  getLiabilities, updateLiability, deleteLiability,
   getNetWorthSnapshots, addNetWorthSnapshot,
   getBenchmarks, getBankRates, getNews, triggerScrape,
 } from '../api/endpoints'
@@ -28,16 +28,10 @@ const CAT_COLORS: Record<string, string> = {
 }
 
 function TransactionsTab() {
-  const [addOpen, setAddOpen] = useState(false)
-  const [form] = Form.useForm()
   const qc = useQueryClient()
 
   const { data: txs = [], isLoading } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() })
 
-  const addMutation = useMutation({
-    mutationFn: createTransaction,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['transactions'] }); setAddOpen(false); form.resetFields() },
-  })
   const deleteMutation = useMutation({
     mutationFn: deleteTransaction,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['transactions'] }),
@@ -71,22 +65,9 @@ function TransactionsTab() {
           </Col>
         ))}
       </Row>
-      <Card size="small" title="Transactions" extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>Add</Button>}>
+      <Card size="small" title="Transactions" extra={<span style={{ fontSize: 12, color: '#8c8c8c' }}>Use <b>Accounting → Journal</b> to record</span>}>
         {isLoading ? <Spin /> : <Table dataSource={txs} columns={columns} size="small" rowKey="id" pagination={{ pageSize: 20 }} scroll={{ x: true }} />}
       </Card>
-      <Modal title="Add Transaction" open={addOpen} onCancel={() => { setAddOpen(false); form.resetFields() }} footer={null}>
-        <Form form={form} layout="vertical" onFinish={values => addMutation.mutate(values)}>
-          <Form.Item name="date" label="Date" rules={[{ required: true }]}><Input type="date" /></Form.Item>
-          <Form.Item name="description" label="Description" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="category" label="Category" rules={[{ required: true }]}>
-            <Select options={CATEGORIES.map(c => ({ value: c, label: c }))} />
-          </Form.Item>
-          <Form.Item name="amount" label="Amount (negative = expense)" rules={[{ required: true }]}>
-            <InputNumber style={{ width: '100%' }} step={0.01} />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" loading={addMutation.isPending} block>Save</Button>
-        </Form>
-      </Modal>
     </>
   )
 }
@@ -177,18 +158,11 @@ function buildAssetPayload(values: AssetFormValues) {
 }
 
 function AssetsTab() {
-  const [addOpen, setAddOpen] = useState(false)
   const [editAsset, setEditAsset] = useState<Asset | null>(null)
-  const [addForm] = Form.useForm<AssetFormValues>()
   const [editForm] = Form.useForm<AssetFormValues>()
   const qc = useQueryClient()
 
   const { data: assets = [], isLoading } = useQuery({ queryKey: ['assets'], queryFn: getAssets })
-
-  const addMutation = useMutation({
-    mutationFn: (values: AssetFormValues) => createAsset(buildAssetPayload(values)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['assets'] }); setAddOpen(false); addForm.resetFields() },
-  })
 
   const editMutation = useMutation({
     mutationFn: ({ id, values }: { id: string; values: AssetFormValues }) => updateAsset(id, buildAssetPayload(values)),
@@ -261,13 +235,9 @@ function AssetsTab() {
         </Col>
       </Row>
 
-      <Card size="small" title="Assets" extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>Add</Button>}>
+      <Card size="small" title="Assets" extra={<span style={{ fontSize: 12, color: '#8c8c8c' }}>Use <b>Accounting → Journal</b> to record</span>}>
         {isLoading ? <Spin /> : <Table dataSource={assets} columns={columns} size="small" rowKey="id" pagination={{ pageSize: 20 }} scroll={{ x: true }} />}
       </Card>
-
-      <Modal title="Add Asset" open={addOpen} onCancel={() => { setAddOpen(false); addForm.resetFields() }} footer={null}>
-        {assetFormFields(addForm, values => addMutation.mutate(values), addMutation.isPending)}
-      </Modal>
 
       <Drawer title="Edit Asset" open={editAsset !== null} onClose={() => setEditAsset(null)} width={400} footer={null}>
         {editAsset && assetFormFields(editForm, values => editMutation.mutate({ id: editAsset.id, values }), editMutation.isPending)}
@@ -327,18 +297,12 @@ function liabilityFormFields(form: FormInstance<LiabilityFormValues>, onFinish: 
 }
 
 function LiabilitiesTab() {
-  const [addOpen, setAddOpen] = useState(false)
   const [editItem, setEditItem] = useState<Liability | null>(null)
-  const [addForm] = Form.useForm<LiabilityFormValues>()
   const [editForm] = Form.useForm<LiabilityFormValues>()
   const qc = useQueryClient()
 
   const { data: liabilities = [], isLoading } = useQuery({ queryKey: ['liabilities'], queryFn: getLiabilities })
 
-  const addMutation = useMutation({
-    mutationFn: (values: LiabilityFormValues) => createLiability(buildLiabilityPayload(values)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['liabilities'] }); setAddOpen(false); addForm.resetFields() },
-  })
   const editMutation = useMutation({
     mutationFn: ({ id, values }: { id: string; values: LiabilityFormValues }) => updateLiability(id, buildLiabilityPayload(values)),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['liabilities'] }); setEditItem(null); editForm.resetFields() },
@@ -391,12 +355,9 @@ function LiabilitiesTab() {
           </Card>
         </Col>
       </Row>
-      <Card size="small" title="Liabilities" extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>Add</Button>}>
+      <Card size="small" title="Liabilities" extra={<span style={{ fontSize: 12, color: '#8c8c8c' }}>Use <b>Accounting → Journal</b> to record</span>}>
         {isLoading ? <Spin /> : <Table dataSource={liabilities} columns={columns} size="small" rowKey="id" pagination={{ pageSize: 20 }} scroll={{ x: true }} />}
       </Card>
-      <Modal title="Add Liability" open={addOpen} onCancel={() => { setAddOpen(false); addForm.resetFields() }} footer={null}>
-        {liabilityFormFields(addForm, values => addMutation.mutate(values), addMutation.isPending)}
-      </Modal>
       <Drawer title="Edit Liability" open={editItem !== null} onClose={() => { setEditItem(null); editForm.resetFields() }} width={400} footer={null}>
         {editItem && liabilityFormFields(editForm, values => editMutation.mutate({ id: editItem.id, values }), editMutation.isPending)}
       </Drawer>
