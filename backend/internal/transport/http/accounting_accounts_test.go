@@ -78,6 +78,10 @@ func (r *testAccountRepo) FindByNameAndType(_ context.Context, userID, name stri
 }
 
 func (r *testAccountRepo) Delete(_ context.Context, id accounting.AccountID, userID string) error {
+	a, ok := r.accounts[id]
+	if !ok || a.UserID() != userID {
+		return repository.ErrAccountNotFound
+	}
 	delete(r.accounts, id)
 	return nil
 }
