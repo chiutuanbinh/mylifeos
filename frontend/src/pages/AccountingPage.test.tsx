@@ -9,6 +9,8 @@ vi.mock('../api/endpoints')
 
 const mockGetAccounts = vi.mocked(endpoints.getAccounts)
 const mockCreateAccount = vi.mocked(endpoints.createAccount)
+const mockGetJournalEntries = vi.mocked(endpoints.getJournalEntries)
+const mockGetJournalNetWorth = vi.mocked(endpoints.getJournalNetWorth)
 
 function wrap(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -22,19 +24,29 @@ const sampleAccounts: Account[] = [
     currency: 'VND', is_group: true, archived: false, sort_order: 0, balance: 0 },
 ]
 
-beforeEach(() => { vi.clearAllMocks() })
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockGetJournalEntries.mockResolvedValue([])
+  mockGetJournalNetWorth.mockResolvedValue({ net_worth: '0', currency: 'VND' })
+})
+
+async function switchToAccountsTab() {
+  fireEvent.click(screen.getByRole('tab', { name: /accounts/i }))
+}
 
 describe('AccountingPage — Accounts tab', () => {
   it('renders account list', async () => {
-    mockGetAccounts.mockResolvedValueOnce(sampleAccounts)
+    mockGetAccounts.mockResolvedValue(sampleAccounts)
     wrap(<AccountingPage />)
+    await switchToAccountsTab()
     await waitFor(() => expect(screen.getByText('Cash')).toBeInTheDocument())
     expect(screen.getAllByText('asset').length).toBeGreaterThan(0)
   })
 
   it('opens create modal on Add button click', async () => {
-    mockGetAccounts.mockResolvedValueOnce([])
+    mockGetAccounts.mockResolvedValue([])
     wrap(<AccountingPage />)
+    await switchToAccountsTab()
     await waitFor(() => screen.getByRole('button', { name: /add account/i }))
     fireEvent.click(screen.getByRole('button', { name: /add account/i }))
     expect(screen.getByText(/new account/i)).toBeInTheDocument()
@@ -44,6 +56,7 @@ describe('AccountingPage — Accounts tab', () => {
     mockGetAccounts.mockResolvedValue([])
     mockCreateAccount.mockResolvedValueOnce({ id: 'a3' })
     wrap(<AccountingPage />)
+    await switchToAccountsTab()
     await waitFor(() => screen.getByRole('button', { name: /add account/i }))
     fireEvent.click(screen.getByRole('button', { name: /add account/i }))
     fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Savings' } })
@@ -56,23 +69,26 @@ describe('AccountingPage — Accounts tab', () => {
 
 describe('AccountingPage — SetupWizard', () => {
   it('shows setup wizard when accounts list is empty', async () => {
-    mockGetAccounts.mockResolvedValueOnce([])
+    mockGetAccounts.mockResolvedValue([])
     wrap(<AccountingPage />)
+    await switchToAccountsTab()
     await waitFor(() =>
       expect(screen.getByText(/set up your accounts/i)).toBeInTheDocument()
     )
   })
 
   it('does not show wizard when accounts exist', async () => {
-    mockGetAccounts.mockResolvedValueOnce(sampleAccounts)
+    mockGetAccounts.mockResolvedValue(sampleAccounts)
     wrap(<AccountingPage />)
+    await switchToAccountsTab()
     await waitFor(() => screen.getByText('Cash'))
     expect(screen.queryByText(/set up your accounts/i)).not.toBeInTheDocument()
   })
 
   it('dismisses wizard on Skip', async () => {
-    mockGetAccounts.mockResolvedValueOnce([])
+    mockGetAccounts.mockResolvedValue([])
     wrap(<AccountingPage />)
+    await switchToAccountsTab()
     await waitFor(() => screen.getByText(/set up your accounts/i))
     fireEvent.click(screen.getByRole('button', { name: /skip/i }))
     await waitFor(() =>
@@ -81,8 +97,9 @@ describe('AccountingPage — SetupWizard', () => {
   })
 
   it('renders all default leaf accounts as checked checkboxes', async () => {
-    mockGetAccounts.mockResolvedValueOnce([])
+    mockGetAccounts.mockResolvedValue([])
     wrap(<AccountingPage />)
+    await switchToAccountsTab()
     await waitFor(() => screen.getByText(/set up your accounts/i))
     expect(screen.getByLabelText(/cash/i)).toBeChecked()
     expect(screen.getByLabelText(/bank account/i)).toBeChecked()
