@@ -16,13 +16,13 @@ beforeEach(() => { vi.clearAllMocks() })
 
 describe('LiveNetWorthCard', () => {
   it('displays net worth from journal API', async () => {
-    mockGetJournalNetWorth.mockResolvedValueOnce({ net_worth: '123456789', currency: 'VND' })
+    mockGetJournalNetWorth.mockResolvedValueOnce({ net_worth: '123456789', currency: 'VND', net_income_ytd: '100000' })
     wrap(<LiveNetWorthCard />)
     await waitFor(() => expect(screen.getByText(/123\.456\.789/)).toBeInTheDocument())
   })
 
   it('shows zero when net worth is 0', async () => {
-    mockGetJournalNetWorth.mockResolvedValueOnce({ net_worth: '0', currency: 'VND' })
+    mockGetJournalNetWorth.mockResolvedValueOnce({ net_worth: '0', currency: 'VND', net_income_ytd: '0' })
     wrap(<LiveNetWorthCard />)
     await waitFor(() => expect(screen.getByText(/₫0/)).toBeInTheDocument())
   })

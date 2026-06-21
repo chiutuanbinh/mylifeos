@@ -3,7 +3,7 @@ import type {
   Transaction, Budget, Goal, KeyResult, KRLog,
   Note, Event, Asset, Liability, UserSettings, DashboardSummary,
   NetWorthSnapshot, BenchmarkData, BankRate, NewsItem,
-  Account, CreateAccountRequest, CreateJournalEntryRequest, NetWorthResult, JournalEntry,
+  Account, CreateAccountRequest, UpdateAccountRequest, CreateJournalEntryRequest, NetWorthResult, JournalEntry,
 } from './types'
 
 export const getDashboardSummary = () =>
@@ -118,6 +118,9 @@ export const getAccounts = () =>
 
 export const createAccount = (data: CreateAccountRequest) =>
   apiClient.post<{ id: string }>('/accounts', data).then(r => r.data)
+
+export const updateAccount = (id: string, data: UpdateAccountRequest) =>
+  apiClient.patch(`/accounts/${id}`, data)
 
 export const createJournalEntry = (data: CreateJournalEntryRequest) =>
   apiClient.post<{ id: string }>('/journal/entries', data).then(r => r.data)

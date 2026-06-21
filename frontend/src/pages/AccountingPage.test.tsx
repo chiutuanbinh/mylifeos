@@ -19,15 +19,15 @@ function wrap(ui: React.ReactElement) {
 
 const sampleAccounts: Account[] = [
   { id: 'a1', user_id: 'u1', parent_id: null, name: 'Cash', type: 'asset',
-    currency: 'VND', is_group: false, archived: false, sort_order: 0, balance: 0 },
+    currency: 'VND', is_group: false, archived: false, sort_order: 0, balance: 0, asset_meta: null },
   { id: 'a2', user_id: 'u1', parent_id: null, name: 'Assets', type: 'asset',
-    currency: 'VND', is_group: true, archived: false, sort_order: 0, balance: 0 },
+    currency: 'VND', is_group: true, archived: false, sort_order: 0, balance: 0, asset_meta: null },
 ]
 
 beforeEach(() => {
   vi.clearAllMocks()
   mockGetJournalEntries.mockResolvedValue([])
-  mockGetJournalNetWorth.mockResolvedValue({ net_worth: '0', currency: 'VND' })
+  mockGetJournalNetWorth.mockResolvedValue({ net_worth: '0', currency: 'VND', net_income_ytd: '0' })
 })
 
 async function switchToAccountsTab() {

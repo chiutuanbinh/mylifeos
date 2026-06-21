@@ -19,7 +19,7 @@ describe('getAccounts', () => {
   it('calls GET /accounts and returns data', async () => {
     const accounts: Account[] = [
       { id: 'a1', user_id: 'u1', parent_id: null, name: 'Checking', type: 'asset',
-        currency: 'VND', is_group: false, archived: false, sort_order: 0, balance: 0 },
+        currency: 'VND', is_group: false, archived: false, sort_order: 0, balance: 0, asset_meta: null },
     ]
     mockGet.mockResolvedValueOnce({ data: accounts })
     const result = await getAccounts()
@@ -58,7 +58,7 @@ describe('createJournalEntry', () => {
 
 describe('getJournalNetWorth', () => {
   it('calls GET /journal/networth and returns result', async () => {
-    const nw: NetWorthResult = { net_worth: '5000000', currency: 'VND' }
+    const nw: NetWorthResult = { net_worth: '5000000', currency: 'VND', net_income_ytd: '100000' }
     mockGet.mockResolvedValueOnce({ data: nw })
     const result = await getJournalNetWorth()
     expect(mockGet).toHaveBeenCalledWith('/journal/networth')

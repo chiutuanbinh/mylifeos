@@ -144,6 +144,13 @@ export interface NewsItem {
   url: string
 }
 
+export interface AssetMeta {
+  purchase_value: string | null
+  purchased_at: string | null
+  depreciation_rate: string | null
+  notes: string
+}
+
 export interface Account {
   id: string
   user_id: string
@@ -155,6 +162,7 @@ export interface Account {
   archived: boolean
   sort_order: number
   balance: number
+  asset_meta: AssetMeta | null
 }
 
 export interface JournalLine {
@@ -184,6 +192,19 @@ export interface CreateAccountRequest {
   parent_id: string | null
 }
 
+export interface UpdateAccountRequest {
+  name: string
+  type: 'asset' | 'liability' | 'equity' | 'income' | 'expense'
+  parent_id?: string | null
+  sort_order: number
+  asset_meta?: {
+    purchase_value?: number | null
+    purchased_at?: string | null
+    depreciation_rate?: number | null
+    notes?: string
+  } | null
+}
+
 export interface CreateJournalEntryRequest {
   date: string
   description: string
@@ -199,4 +220,5 @@ export interface CreateJournalEntryRequest {
 export interface NetWorthResult {
   net_worth: string
   currency: string
+  net_income_ytd: string
 }
