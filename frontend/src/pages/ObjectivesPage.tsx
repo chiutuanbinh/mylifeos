@@ -105,28 +105,29 @@ export function ObjectivesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['kr-logs', today] })
       qc.invalidateQueries({ queryKey: ['kr-logs-month', monthFrom, monthTo, allKrIds.join(',')] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 
   const createGoalMutation = useMutation({
     mutationFn: createGoal,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['goals'] }); setAddGoalOpen(false); addGoalForm.resetFields() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['goals'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); setAddGoalOpen(false); addGoalForm.resetFields() },
   })
 
   const updateGoalMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Goal> }) => updateGoal(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['goals'] }); setEditGoal(null) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['goals'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }); setEditGoal(null) },
   })
 
   const deleteGoalMutation = useMutation({
     mutationFn: deleteGoal,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['goals'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['goals'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }) },
   })
 
   const toggleKRMutation = useMutation({
     mutationFn: ({ goalId, krId, done }: { goalId: string; krId: string; done: boolean }) =>
       updateKeyResult(goalId, krId, { done }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['goals'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['goals'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }) },
   })
 
   const addKrMutation = useMutation({
@@ -134,6 +135,7 @@ export function ObjectivesPage() {
       addKeyResult(goalId, description, recurring),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['goals'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
       setNewKr(prev => ({ ...prev, [vars.goalId]: '' }))
       setNewKrRecurring(prev => ({ ...prev, [vars.goalId]: false }))
     },
@@ -141,7 +143,7 @@ export function ObjectivesPage() {
 
   const deleteKrMutation = useMutation({
     mutationFn: ({ goalId, krId }: { goalId: string; krId: string }) => deleteKeyResult(goalId, krId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['goals'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['goals'] }); qc.invalidateQueries({ queryKey: ['dashboard'] }) },
   })
 
   const openEditGoal = (g: Goal) => {
