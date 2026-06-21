@@ -119,14 +119,15 @@ func (h *JournalHandler) ListEntries(w http.ResponseWriter, r *http.Request) {
 
 func (h *JournalHandler) NetWorth(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
-	nw, err := h.networth.Current(r.Context(), userID)
+	result, err := h.networth.Current(r.Context(), userID)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"net_worth": nw.Amount,
-		"currency":  nw.Currency,
+		"net_worth":      result.NetWorth.Amount,
+		"currency":       result.NetWorth.Currency,
+		"net_income_ytd": result.NetIncomeYTD.Amount,
 	})
 }
