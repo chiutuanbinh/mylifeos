@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/domain/accounting"
+	"github.com/chiutuanbinh/mylifeos/backend/internal/port/repository"
 	accountingsvc "github.com/chiutuanbinh/mylifeos/backend/internal/service/accounting"
 	httphandler "github.com/chiutuanbinh/mylifeos/backend/internal/transport/http"
 	"github.com/shopspring/decimal"
@@ -47,9 +48,18 @@ func (r *testAccountRepo) FindByUser(_ context.Context, _ string) ([]*accounting
 func (r *testAccountRepo) FindByID(_ context.Context, id accounting.AccountID) (*accounting.Account, error) {
 	a, ok := r.accounts[id]
 	if !ok {
-		return nil, nil
+		return nil, repository.ErrAccountNotFound
 	}
 	return a, nil
+}
+
+func (r *testAccountRepo) FindByNameAndType(_ context.Context, userID, name string, t accounting.AccountType) (*accounting.Account, error) {
+	for _, a := range r.accounts {
+		if a.UserID() == userID && a.Name() == name && a.Type() == t {
+			return a, nil
+		}
+	}
+	return nil, repository.ErrAccountNotFound
 }
 
 func TestAccountsHandler_Create_Success(t *testing.T) {
