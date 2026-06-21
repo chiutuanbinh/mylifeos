@@ -15,6 +15,7 @@ type AccountRepo interface {
 	FindByUser(ctx context.Context, userID string) ([]*accounting.Account, error)
 	FindByID(ctx context.Context, id accounting.AccountID) (*accounting.Account, error)
 	FindByNameAndType(ctx context.Context, userID, name string, t accounting.AccountType) (*accounting.Account, error)
+	Delete(ctx context.Context, id accounting.AccountID) error
 }
 
 type JournalRepo interface {

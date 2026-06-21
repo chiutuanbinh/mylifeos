@@ -74,6 +74,11 @@ func (r *testAccountRepo) FindByNameAndType(_ context.Context, userID, name stri
 	return nil, repository.ErrAccountNotFound
 }
 
+func (r *testAccountRepo) Delete(_ context.Context, id accounting.AccountID) error {
+	delete(r.accounts, id)
+	return nil
+}
+
 func TestAccountsHandler_Create_Success(t *testing.T) {
 	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})

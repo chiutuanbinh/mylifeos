@@ -108,6 +108,11 @@ func (r *pgAccountRepo) FindByNameAndType(ctx context.Context, userID, name stri
 	return accounts[0], nil
 }
 
+func (r *pgAccountRepo) Delete(ctx context.Context, id accounting.AccountID) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM accounts WHERE id = $1`, id)
+	return err
+}
+
 func scanAccounts(rows pgx.Rows) ([]*accounting.Account, error) {
 	var result []*accounting.Account
 	for rows.Next() {
