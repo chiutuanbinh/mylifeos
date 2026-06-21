@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
-import { Tabs, Segmented, Table, Typography } from 'antd'
-import type { Account, JournalEntry } from '../api/types'
+import { Tabs, Segmented, Table, Typography, Row, Col, Card, Tag } from 'antd'
+import type { Account, JournalEntry, Transaction } from '../api/types'
+import type { ColumnsType } from 'antd/es/table'
 
 const { Text } = Typography
 
@@ -311,14 +312,38 @@ function ProfitAndLoss({ balances, accounts }: { balances: Map<string, AccountBa
   )
 }
 
+// ── Ledger helpers ────────────────────────────────────────────────────────
+
+const fmtLedgerVND = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
+
+const CAT_COLORS: Record<string, string> = {
+  Food: 'green', Income: 'blue', Entertainment: 'purple', Health: 'volcano',
+  Tech: 'cyan', Auto: 'orange', Utilities: 'gold', Shopping: 'magenta',
+}
+
+const txColumns: ColumnsType<Transaction> = [
+  { title: 'Date', dataIndex: 'date', width: 105 },
+  { title: 'Description', dataIndex: 'description', ellipsis: true },
+  { title: 'Category', dataIndex: 'category', width: 130, render: (c: string) => <Tag color={CAT_COLORS[c]}>{c}</Tag> },
+  {
+    title: 'Amount', dataIndex: 'amount', align: 'right', width: 150,
+    render: (a: number) => (
+      <span style={{ color: a > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600, whiteSpace: 'nowrap' }}>
+        {a > 0 ? '+' : '-'}{fmtLedgerVND(a)}
+      </span>
+    ),
+  },
+]
+
 // ── Main component ────────────────────────────────────────────────────────
 
 interface ReportsTabProps {
   accounts: Account[]
   entries: JournalEntry[]
+  transactions: Transaction[]
 }
 
-export function ReportsTab({ accounts, entries }: ReportsTabProps) {
+export function ReportsTab({ accounts, entries, transactions }: ReportsTabProps) {
   const [timeWindow, setTimeWindow] = useState<Window>('month')
 
   const balances = useMemo(() => {
@@ -334,8 +359,28 @@ export function ReportsTab({ accounts, entries }: ReportsTabProps) {
     { label: 'All Time', value: 'all' },
   ]
 
+  const totalIncome = transactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
+  const totalExpenses = transactions.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
+
   return (
     <>
+      <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+        {[
+          { label: 'Income', val: fmtLedgerVND(totalIncome), color: '#52c41a' },
+          { label: 'Expenses', val: fmtLedgerVND(totalExpenses), color: '#ff4d4f' },
+          { label: 'Net Cash', val: (totalIncome - totalExpenses >= 0 ? '' : '-') + fmtLedgerVND(totalIncome - totalExpenses), color: '#1677ff' },
+        ].map((s, i) => (
+          <Col xs={24} sm={8} key={i}>
+            <Card size="small">
+              <div style={{ fontSize: 12, color: '#999' }}>{s.label}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.val}</div>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+      <Card size="small" title="Ledger" style={{ marginBottom: 16 }}>
+        <Table dataSource={transactions} columns={txColumns} size="small" rowKey="id" pagination={{ pageSize: 20 }} scroll={{ x: true }} />
+      </Card>
       <div style={{ marginBottom: 16 }}>
         <Segmented
           options={windowOptions}
