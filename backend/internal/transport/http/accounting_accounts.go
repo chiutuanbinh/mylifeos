@@ -279,14 +279,19 @@ func (h *AccountsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	switch {
 	case errors.Is(err, repository.ErrAccountNotFound):
-		http.Error(w, `{"error":"account not found"}`, http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"error": "account not found"})
 	case errors.Is(err, accountingsvc.ErrAccountHasChildren):
-		http.Error(w, `{"error":"account has child accounts"}`, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "account has child accounts"})
 	case errors.Is(err, accountingsvc.ErrAccountHasJournalLines):
-		http.Error(w, `{"error":"account has journal entries"}`, http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "account has journal entries"})
 	default:
-		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "internal server error"})
 	}
 }
