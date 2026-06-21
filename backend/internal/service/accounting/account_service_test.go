@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/domain/accounting"
+	"github.com/chiutuanbinh/mylifeos/backend/internal/port/repository"
 	accountingsvc "github.com/chiutuanbinh/mylifeos/backend/internal/service/accounting"
 )
 
@@ -38,6 +39,15 @@ func (r *fakeAccountRepo) FindByID(_ context.Context, id accounting.AccountID) (
 		return nil, errors.New("not found")
 	}
 	return a, nil
+}
+
+func (r *fakeAccountRepo) FindByNameAndType(_ context.Context, userID, name string, t accounting.AccountType) (*accounting.Account, error) {
+	for _, a := range r.accounts {
+		if a.UserID() == userID && a.Name() == name && a.Type() == t {
+			return a, nil
+		}
+	}
+	return nil, repository.ErrAccountNotFound
 }
 
 func TestAccountService_OpenAccount_Root(t *testing.T) {
