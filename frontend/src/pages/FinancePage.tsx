@@ -3,14 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Tabs, Card, Table, Tag, Button, Form, Input, Select, Switch,
   InputNumber, Modal, Spin, Badge, Checkbox, Radio, Collapse, Row, Col,
-  Popconfirm, message, Typography, Divider, Progress, Alert,
+  Popconfirm, message, Typography, Divider, Progress,
 } from 'antd'
 import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined, DeleteOutlined, QuestionCircleOutlined, LineChartOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import {
   getAccounts, createAccount, updateAccount, deleteAccount,
   createJournalEntry, getJournalEntries, getJournalNetWorth,
-  getTransactions, deleteTransaction,
+  getTransactions,
   getBudgets, upsertBudget,
   getNetWorthSnapshots, addNetWorthSnapshot,
   getBenchmarks, getBankRates, getNews, triggerScrape,
@@ -20,7 +20,7 @@ import { useTabParam } from '../hooks/useTabParam'
 import type {
   Account, CreateAccountRequest, UpdateAccountRequest,
   CreateJournalEntryRequest, JournalEntry,
-  Transaction, BankRate, NewsItem,
+  BankRate, NewsItem,
 } from '../api/types'
 import { NetWorthChart } from '../components/NetWorthChart'
 import { LiveNetWorthCard } from './LiveNetWorthCard'
@@ -37,10 +37,6 @@ const fmtVND = (s: string) => `₫${Math.round(Math.abs(parseFloat(s))).toLocale
 
 const CATEGORIES = ['Food', 'Income', 'Entertainment', 'Health', 'Tech', 'Auto', 'Utilities', 'Shopping']
 
-const CAT_COLORS_WEALTH: Record<string, string> = {
-  Food: 'green', Income: 'blue', Entertainment: 'purple', Health: 'volcano',
-  Tech: 'cyan', Auto: 'orange', Utilities: 'gold', Shopping: 'magenta',
-}
 
 const BANK_DISPLAY: Record<string, string> = {
   vcb: 'Vietcombank', tcb: 'Techcombank', mbbank: 'MB Bank',
@@ -930,51 +926,6 @@ function JournalTab() {
         </Form>
       </Modal>
     </>
-  )
-}
-
-function AssetsTab() {
-  const { data: accounts = [], isLoading } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: getAccounts,
-  })
-
-  const assetAccounts = accounts.filter(a => a.asset_meta !== null && !a.is_group)
-
-  const columns: ColumnsType<Account> = [
-    {
-      title: 'Name', dataIndex: 'name',
-      render: (name) => <span><FileOutlined style={{ marginRight: 6, color: '#8c8c8c' }} />{name}</span>,
-    },
-    { title: 'Purchase Value', dataIndex: ['asset_meta', 'purchase_value'], width: 160, align: 'right',
-      render: (v: string | null) => v ? fmtVND(v) : '—' },
-    { title: 'Purchased', dataIndex: ['asset_meta', 'purchased_at'], width: 110,
-      render: (v: string | null) => v ?? '—' },
-    { title: 'Depr. Rate', dataIndex: ['asset_meta', 'depreciation_rate'], width: 100,
-      render: (v: string | null) => v ? `${(parseFloat(v) * 100).toFixed(0)}%/yr` : '—' },
-    { title: 'Current Balance', dataIndex: 'balance', width: 160, align: 'right',
-      render: (bal: number) => {
-        const neg = bal < 0
-        return <span style={{ color: neg ? '#ff4d4f' : undefined }}>{neg ? '-' : ''}{fmtVND(String(bal))}</span>
-      } },
-    { title: 'Notes', dataIndex: ['asset_meta', 'notes'],
-      render: (v: string) => v || '—' },
-  ]
-
-  return (
-    <Card size="small" title="Physical Assets">
-      {isLoading ? <Spin /> : (
-        <Table<Account>
-          dataSource={assetAccounts}
-          columns={columns}
-          size="small"
-          rowKey="id"
-          pagination={false}
-          scroll={{ x: true }}
-          locale={{ emptyText: 'No physical assets tracked. Add an account with type "asset" and fill in Asset Details.' }}
-        />
-      )}
-    </Card>
   )
 }
 

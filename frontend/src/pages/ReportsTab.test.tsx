@@ -10,8 +10,8 @@ function wrap(ui: React.ReactElement) {
 }
 
 const sampleTxs: Transaction[] = [
-  { id: 't1', user_id: 'u1', date: '2026-01-01', description: 'Salary', category: 'Food', amount: 5000000 },
-  { id: 't2', user_id: 'u1', date: '2026-01-02', description: 'Lunch', category: 'Food', amount: -100000 },
+  { id: 't1', user_id: 'u1', date: '2026-01-01', description: 'Salary', category: 'Food', amount: 5000000, created_at: '2026-01-01T00:00:00Z' },
+  { id: 't2', user_id: 'u1', date: '2026-01-02', description: 'Lunch', category: 'Food', amount: -100000, created_at: '2026-01-02T00:00:00Z' },
 ]
 
 describe('ReportsTab — Ledger section', () => {

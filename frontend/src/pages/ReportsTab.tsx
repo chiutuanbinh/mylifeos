@@ -338,10 +338,10 @@ const txColumns: ColumnsType<Transaction> = [
 interface ReportsTabProps {
   accounts: Account[]
   entries: JournalEntry[]
-  transactions: Transaction[]
+  transactions?: Transaction[]
 }
 
-export function ReportsTab({ accounts, entries, transactions }: ReportsTabProps) {
+export function ReportsTab({ accounts, entries, transactions = [] }: ReportsTabProps) {
   const [timeWindow, setTimeWindow] = useState<Window>('month')
 
   const balances = useMemo(() => {
