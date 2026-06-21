@@ -1,13 +1,3 @@
-export interface Transaction {
-  id: string
-  user_id: string
-  date: string
-  description: string
-  category: string
-  amount: number
-  created_at: string
-}
-
 export interface Budget {
   id: string
   user_id: string
@@ -109,7 +99,6 @@ export interface DashboardSummary {
   goals_avg_progress: number
   budget_total: number
   budget_spent: number
-  recent_transactions: Transaction[]
 }
 
 export interface NetWorthSnapshot {

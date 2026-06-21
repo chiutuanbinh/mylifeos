@@ -106,9 +106,6 @@ func main() {
 
 		r.Get("/dashboard/summary", dashHandler.Summary)
 
-		r.Get("/transactions",        txHandler.List)
-		r.Post("/transactions",        txHandler.Create)
-		r.Delete("/transactions/{id}", txHandler.Delete)
 		r.Get("/budgets",              txHandler.ListBudgets)
 		r.Put("/budgets/{category}",   txHandler.UpsertBudget)
 		r.Delete("/budgets/{category}", txHandler.DeleteBudget)

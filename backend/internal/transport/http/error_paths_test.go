@@ -362,13 +362,6 @@ func TestSettingsUpdate_DBError(t *testing.T) {
 
 type errTxRepo struct{}
 
-func (m *errTxRepo) List(_ context.Context, _, _, _, _ string, _, _ int) ([]finance.Transaction, error) {
-	return nil, errDB
-}
-func (m *errTxRepo) Create(_ context.Context, _ finance.Transaction) (finance.Transaction, error) {
-	return finance.Transaction{}, errDB
-}
-func (m *errTxRepo) Delete(_ context.Context, _, _ string) error { return errDB }
 func (m *errTxRepo) ListBudgets(_ context.Context, _ string) ([]finance.Budget, error) {
 	return nil, errDB
 }
@@ -379,43 +372,6 @@ func (m *errTxRepo) DeleteBudget(_ context.Context, _, _ string) error { return 
 func (m *errTxRepo) SumByUser(_ context.Context, _ string) (float64, error) { return 0, errDB }
 func (m *errTxRepo) SumSpentThisMonth(_ context.Context, _ string) (float64, error) {
 	return 0, errDB
-}
-
-func TestTransactionList_DBError(t *testing.T) {
-	devEnv(t)
-	h := httphandler.NewTransactionHandler(&errTxRepo{})
-	handler := middleware.Auth(http.HandlerFunc(h.List))
-	req := httptest.NewRequest("GET", "/api/v1/transactions", nil)
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", w.Code)
-	}
-}
-
-func TestTransactionCreate_BadRequest(t *testing.T) {
-	devEnv(t)
-	h := httphandler.NewTransactionHandler(&errTxRepo{})
-	handler := middleware.Auth(http.HandlerFunc(h.Create))
-	req := httptest.NewRequest("POST", "/api/v1/transactions", bytes.NewReader([]byte("notjson")))
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", w.Code)
-	}
-}
-
-func TestTransactionDelete_DBError(t *testing.T) {
-	devEnv(t)
-	h := httphandler.NewTransactionHandler(&errTxRepo{})
-	r := chi.NewRouter()
-	r.Delete("/transactions/{id}", middleware.Auth(http.HandlerFunc(h.Delete)).(http.HandlerFunc))
-	req := httptest.NewRequest("DELETE", "/transactions/tx-1", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", w.Code)
-	}
 }
 
 func TestTransactionListBudgets_DBError(t *testing.T) {

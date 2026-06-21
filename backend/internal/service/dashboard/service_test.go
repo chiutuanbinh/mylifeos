@@ -206,13 +206,3 @@ func TestSummary_NetWorthTrend_Sparkline(t *testing.T) {
 	}
 }
 
-func TestSummary_RecentTx_NotNil(t *testing.T) {
-	svc, _ := newSvc(nil, nil, 0)
-	sum, err := svc.Summary(context.Background(), "user1")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if sum.RecentTx == nil {
-		t.Error("RecentTx should not be nil")
-	}
-}

@@ -10,7 +10,7 @@ import type { ColumnsType } from 'antd/es/table'
 import {
   getAccounts, createAccount, updateAccount, deleteAccount,
   createJournalEntry, getJournalEntries, getJournalNetWorth,
-  getGoals, getTransactions,
+  getGoals,
   getBudgets, upsertBudget, deleteBudget,
   getNetWorthSnapshots, addNetWorthSnapshot,
   getBenchmarks, getBankRates, getNews, triggerScrape,
@@ -69,8 +69,9 @@ function BudgetsTab() {
   const [addForm] = Form.useForm()
   const qc = useQueryClient()
 
-  const { data: txs = [] } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() })
   const { data: budgets = [] } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
+  const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
+  const { data: journalEntries = [] } = useQuery({ queryKey: ['journal-entries'], queryFn: getJournalEntries })
 
   const fmtVNDLocal = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
 
@@ -108,7 +109,14 @@ function BudgetsTab() {
         <Card size="small" title="Budget Progress" style={{ marginBottom: 12 }}>
           <Row gutter={[12, 8]}>
             {budgets.map(b => {
-              const spent = txs.filter(t => t.category === b.category && t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
+              const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+              const expenseAccounts = accounts.filter(a => a.type === 'expense' && !a.is_group && a.name.toLowerCase().includes(b.category.toLowerCase()))
+              const expenseAccountIds = new Set(expenseAccounts.map(a => a.id))
+              const spent = journalEntries
+                .filter(e => new Date(e.date) >= monthStart)
+                .flatMap(e => e.lines)
+                .filter(l => l.side === 'debit' && expenseAccountIds.has(l.account_id))
+                .reduce((s, l) => s + parseFloat(l.amount), 0)
               const pct = Math.min(Math.round(spent / b.monthly_limit * 100), 100)
               return (
                 <Col xs={24} sm={8} key={b.id}>
@@ -785,7 +793,6 @@ function JournalTab() {
   const { data: nw } = useQuery({ queryKey: ['journal-networth'], queryFn: getJournalNetWorth })
   const { data: goals = [] } = useQuery<Goal[]>({ queryKey: ['goals'], queryFn: getGoals })
   const { data: budgets = [] } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
-  const { data: txs = [] } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() })
 
   const leafAccounts = accounts.filter(a => !a.is_group)
 
@@ -1039,20 +1046,19 @@ function JournalTab() {
           </Form.Item>
 
           {budgets.length > 0 && (() => {
-            const now = new Date()
-            const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-            const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`
+            const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
             return (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>Budget remaining this month</div>
                 <Space wrap size={[4, 4]}>
                   {budgets.map((b: { id: string; category: string; monthly_limit: number }) => {
-                    const spent = txs
-                      .filter((t: { date?: string; category: string; amount: number }) => {
-                        const d = t.date?.slice(0, 10) ?? ''
-                        return t.category === b.category && t.amount < 0 && d >= monthStart && d <= monthEnd
-                      })
-                      .reduce((s: number, t: { amount: number }) => s + Math.abs(t.amount), 0)
+                    const expenseAccounts = accounts.filter(a => a.type === 'expense' && !a.is_group && a.name.toLowerCase().includes(b.category.toLowerCase()))
+                    const expenseAccountIds = new Set(expenseAccounts.map(a => a.id))
+                    const spent = entries
+                      .filter(e => new Date(e.date) >= monthStart)
+                      .flatMap(e => e.lines)
+                      .filter(l => l.side === 'debit' && expenseAccountIds.has(l.account_id))
+                      .reduce((s, l) => s + parseFloat(l.amount), 0)
                     const remaining = b.monthly_limit - spent
                     const pct = b.monthly_limit > 0 ? remaining / b.monthly_limit : 1
                     const color = pct <= 0.2 ? '#ff4d4f' : '#52c41a'
@@ -1091,7 +1097,6 @@ function JournalTab() {
 export function FinancePage() {
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
   const { data: entries = [] } = useQuery({ queryKey: ['journal-entries'], queryFn: getJournalEntries })
-  const { data: transactions = [] } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() })
   const [activeTab, setActiveTab] = useTabParam('journal', ['journal', 'accounts', 'budgets', 'reports', 'trends'])
   const [helpOpen, setHelpOpen] = useState(false)
 
@@ -1173,7 +1178,7 @@ export function FinancePage() {
           { key: 'journal',  label: 'Journal',  children: <JournalTab /> },
           { key: 'accounts', label: 'Accounts', children: <AccountsTab /> },
           { key: 'budgets',  label: 'Budgets',  children: <BudgetsTab /> },
-          { key: 'reports',  label: 'Reports',  children: <ReportsTab accounts={accounts} entries={entries} transactions={transactions} /> },
+          { key: 'reports',  label: 'Reports',  children: <ReportsTab accounts={accounts} entries={entries} /> },
           { key: 'trends',   label: <><LineChartOutlined /> Trends</>, children: <TrendsTab /> },
         ]}
       />

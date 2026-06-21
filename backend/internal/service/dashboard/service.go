@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/chiutuanbinh/mylifeos/backend/internal/domain/finance"
 	trendsdomain "github.com/chiutuanbinh/mylifeos/backend/internal/domain/trends"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/port/repository"
 	wealthsvc "github.com/chiutuanbinh/mylifeos/backend/internal/service/wealth"
@@ -12,14 +11,13 @@ import (
 
 // Summary is the dashboard aggregate output DTO.
 type Summary struct {
-	NetWorth         float64               `json:"net_worth"`
-	NetWorthTrend    []float64             `json:"net_worth_trend"`
-	HabitsTotal      int                   `json:"habits_total"`
-	HabitsDoneToday  int                   `json:"habits_done_today"`
-	GoalsAvgProgress int                   `json:"goals_avg_progress"`
-	BudgetTotal      float64               `json:"budget_total"`
-	BudgetSpent      float64               `json:"budget_spent"`
-	RecentTx         []finance.Transaction `json:"recent_transactions"`
+	NetWorth         float64   `json:"net_worth"`
+	NetWorthTrend    []float64 `json:"net_worth_trend"`
+	HabitsTotal      int       `json:"habits_total"`
+	HabitsDoneToday  int       `json:"habits_done_today"`
+	GoalsAvgProgress int       `json:"goals_avg_progress"`
+	BudgetTotal      float64   `json:"budget_total"`
+	BudgetSpent      float64   `json:"budget_spent"`
 }
 
 type Service struct {
@@ -91,12 +89,6 @@ func (s *Service) Summary(ctx context.Context, userID string) (Summary, error) {
 	}
 	if len(sum.NetWorthTrend) == 0 {
 		sum.NetWorthTrend = []float64{sum.NetWorth}
-	}
-
-	// Recent transactions (most recent 6)
-	sum.RecentTx, _ = s.txs.List(ctx, userID, "", "", "", 6, 0)
-	if sum.RecentTx == nil {
-		sum.RecentTx = []finance.Transaction{}
 	}
 
 	return sum, nil
