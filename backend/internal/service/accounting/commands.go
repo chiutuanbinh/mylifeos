@@ -22,12 +22,31 @@ type RecordTransactionCmd struct {
 	Lines       []LineCmd
 }
 
+type AssetMetaCmd struct {
+	PurchaseValue    *decimal.Decimal
+	PurchasedAt      *time.Time
+	DepreciationRate *decimal.Decimal
+	Notes            string
+}
+
 type OpenAccountCmd struct {
+	UserID         string
+	ParentID       *string
+	Name           string
+	Type           accounting.AccountType
+	Currency       string
+	IsGroup        bool
+	SortOrder      int
+	OpeningBalance *decimal.Decimal
+	AssetMeta      *AssetMetaCmd
+}
+
+type UpdateAccountCmd struct {
+	ID        string
 	UserID    string
-	ParentID  *string
 	Name      string
 	Type      accounting.AccountType
-	Currency  string
-	IsGroup   bool
+	ParentID  *string
 	SortOrder int
+	AssetMeta *AssetMetaCmd
 }

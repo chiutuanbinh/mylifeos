@@ -64,7 +64,7 @@ func main() {
 	accountRepo     := postgres.NewAccountRepo(db)
 	journalRepo     := postgres.NewJournalRepo(db)
 	eventPub        := infraevents.NewInProcessPublisher()
-	accountSvc      := accountingsvc.NewAccountService(accountRepo)
+	accountSvc      := accountingsvc.NewAccountService(accountRepo, journalRepo)
 	journalSvc      := accountingsvc.NewJournalService(journalRepo, accountRepo, eventPub)
 	nwQuery         := accountingsvc.NewNetWorthQuery(accountRepo, journalRepo)
 	accountsHandler := httphandler.NewAccountsHandler(accountSvc, journalRepo)

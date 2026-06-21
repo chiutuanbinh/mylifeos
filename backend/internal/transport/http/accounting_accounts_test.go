@@ -63,7 +63,7 @@ func (r *testAccountRepo) FindByNameAndType(_ context.Context, userID, name stri
 }
 
 func TestAccountsHandler_Create_Success(t *testing.T) {
-	svc := accountingsvc.NewAccountService(newTestAccountRepo())
+	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	body, _ := json.Marshal(map[string]interface{}{
@@ -86,7 +86,7 @@ func TestAccountsHandler_Create_Success(t *testing.T) {
 }
 
 func TestAccountsHandler_Create_MissingName(t *testing.T) {
-	svc := accountingsvc.NewAccountService(newTestAccountRepo())
+	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	body, _ := json.Marshal(map[string]interface{}{"type": "asset"})
@@ -102,7 +102,7 @@ func TestAccountsHandler_Create_MissingName(t *testing.T) {
 }
 
 func TestAccountsHandler_Create_MissingType(t *testing.T) {
-	svc := accountingsvc.NewAccountService(newTestAccountRepo())
+	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	body, _ := json.Marshal(map[string]interface{}{"name": "Cash"})
@@ -118,7 +118,7 @@ func TestAccountsHandler_Create_MissingType(t *testing.T) {
 }
 
 func TestAccountsHandler_Create_BadJSON(t *testing.T) {
-	svc := accountingsvc.NewAccountService(newTestAccountRepo())
+	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/accounts", bytes.NewReader([]byte("not json")))
@@ -133,7 +133,7 @@ func TestAccountsHandler_Create_BadJSON(t *testing.T) {
 }
 
 func TestAccountsHandler_List_Empty(t *testing.T) {
-	svc := accountingsvc.NewAccountService(newTestAccountRepo())
+	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/accounts", nil)
@@ -149,7 +149,7 @@ func TestAccountsHandler_List_Empty(t *testing.T) {
 
 func TestAccountsHandler_List_AfterCreate(t *testing.T) {
 	repo := newTestAccountRepo()
-	svc := accountingsvc.NewAccountService(repo)
+	svc := accountingsvc.NewAccountService(repo, nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	// create one account
@@ -179,7 +179,7 @@ func TestAccountsHandler_List_AfterCreate(t *testing.T) {
 
 func TestAccountsHandler_List_BalanceFromJournal(t *testing.T) {
 	repo := newTestAccountRepo()
-	svc := accountingsvc.NewAccountService(repo)
+	svc := accountingsvc.NewAccountService(repo, nil)
 
 	// create cash account
 	body, _ := json.Marshal(map[string]any{
@@ -224,7 +224,7 @@ func TestAccountsHandler_List_BalanceFromJournal(t *testing.T) {
 
 func TestAccountsHandler_List_GroupAggregatesBalance(t *testing.T) {
 	repo := newTestAccountRepo()
-	svc := accountingsvc.NewAccountService(repo)
+	svc := accountingsvc.NewAccountService(repo, nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 	withCtx := func(r *http.Request) *http.Request { return r.WithContext(withUserID(r.Context(), "user1")) }
 
