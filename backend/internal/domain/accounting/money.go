@@ -21,6 +21,10 @@ func NewMoney(amount decimal.Decimal, currency string) (Money, error) {
 
 func zeroDecimal() decimal.Decimal { return decimal.Zero }
 
+func ZeroMoney(currency string) Money {
+	return Money{Amount: zeroDecimal(), Currency: currency}
+}
+
 func (m Money) Add(other Money) (Money, error) {
 	if m.Currency != other.Currency {
 		return Money{}, fmt.Errorf("currency mismatch: %s vs %s", m.Currency, other.Currency)

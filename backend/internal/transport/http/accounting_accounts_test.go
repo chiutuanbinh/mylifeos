@@ -9,11 +9,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/chiutuanbinh/mylifeos/backend/internal/domain/accounting"
+	"github.com/chiutuanbinh/mylifeos/backend/internal/port/repository"
 	accountingsvc "github.com/chiutuanbinh/mylifeos/backend/internal/service/accounting"
 	httphandler "github.com/chiutuanbinh/mylifeos/backend/internal/transport/http"
 	"github.com/shopspring/decimal"
 )
+
+func setUserID(ctx context.Context, userID string) context.Context {
+	return withUserID(ctx, userID)
+}
+
+func setChiURLParam(r *http.Request, key, val string) *http.Request {
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add(key, val)
+	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+}
 
 func mustDecimal(s string) decimal.Decimal {
 	d, err := decimal.NewFromString(s)
@@ -47,13 +60,22 @@ func (r *testAccountRepo) FindByUser(_ context.Context, _ string) ([]*accounting
 func (r *testAccountRepo) FindByID(_ context.Context, id accounting.AccountID) (*accounting.Account, error) {
 	a, ok := r.accounts[id]
 	if !ok {
-		return nil, nil
+		return nil, repository.ErrAccountNotFound
 	}
 	return a, nil
 }
 
+func (r *testAccountRepo) FindByNameAndType(_ context.Context, userID, name string, t accounting.AccountType) (*accounting.Account, error) {
+	for _, a := range r.accounts {
+		if a.UserID() == userID && a.Name() == name && a.Type() == t {
+			return a, nil
+		}
+	}
+	return nil, repository.ErrAccountNotFound
+}
+
 func TestAccountsHandler_Create_Success(t *testing.T) {
-	svc := accountingsvc.NewAccountService(newTestAccountRepo())
+	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	body, _ := json.Marshal(map[string]interface{}{
@@ -76,7 +98,7 @@ func TestAccountsHandler_Create_Success(t *testing.T) {
 }
 
 func TestAccountsHandler_Create_MissingName(t *testing.T) {
-	svc := accountingsvc.NewAccountService(newTestAccountRepo())
+	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	body, _ := json.Marshal(map[string]interface{}{"type": "asset"})
@@ -92,7 +114,7 @@ func TestAccountsHandler_Create_MissingName(t *testing.T) {
 }
 
 func TestAccountsHandler_Create_MissingType(t *testing.T) {
-	svc := accountingsvc.NewAccountService(newTestAccountRepo())
+	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	body, _ := json.Marshal(map[string]interface{}{"name": "Cash"})
@@ -108,7 +130,7 @@ func TestAccountsHandler_Create_MissingType(t *testing.T) {
 }
 
 func TestAccountsHandler_Create_BadJSON(t *testing.T) {
-	svc := accountingsvc.NewAccountService(newTestAccountRepo())
+	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/accounts", bytes.NewReader([]byte("not json")))
@@ -123,7 +145,7 @@ func TestAccountsHandler_Create_BadJSON(t *testing.T) {
 }
 
 func TestAccountsHandler_List_Empty(t *testing.T) {
-	svc := accountingsvc.NewAccountService(newTestAccountRepo())
+	svc := accountingsvc.NewAccountService(newTestAccountRepo(), nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/accounts", nil)
@@ -139,7 +161,7 @@ func TestAccountsHandler_List_Empty(t *testing.T) {
 
 func TestAccountsHandler_List_AfterCreate(t *testing.T) {
 	repo := newTestAccountRepo()
-	svc := accountingsvc.NewAccountService(repo)
+	svc := accountingsvc.NewAccountService(repo, nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 
 	// create one account
@@ -169,7 +191,7 @@ func TestAccountsHandler_List_AfterCreate(t *testing.T) {
 
 func TestAccountsHandler_List_BalanceFromJournal(t *testing.T) {
 	repo := newTestAccountRepo()
-	svc := accountingsvc.NewAccountService(repo)
+	svc := accountingsvc.NewAccountService(repo, nil)
 
 	// create cash account
 	body, _ := json.Marshal(map[string]any{
@@ -214,7 +236,7 @@ func TestAccountsHandler_List_BalanceFromJournal(t *testing.T) {
 
 func TestAccountsHandler_List_GroupAggregatesBalance(t *testing.T) {
 	repo := newTestAccountRepo()
-	svc := accountingsvc.NewAccountService(repo)
+	svc := accountingsvc.NewAccountService(repo, nil)
 	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
 	withCtx := func(r *http.Request) *http.Request { return r.WithContext(withUserID(r.Context(), "user1")) }
 
@@ -266,5 +288,155 @@ func TestAccountsHandler_List_GroupAggregatesBalance(t *testing.T) {
 	}
 	if balanceFor("Assets") != float64(1000000) {
 		t.Errorf("Assets balance: want 1000000, got %v", balanceFor("Assets"))
+	}
+}
+
+func TestAccountsHandler_Update_Success(t *testing.T) {
+	repo := newTestAccountRepo()
+	svc := accountingsvc.NewAccountService(repo, &testJournalRepo{})
+	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
+
+	// create account
+	createBody, _ := json.Marshal(map[string]interface{}{
+		"name": "Old", "type": "asset", "currency": "VND", "is_group": false, "sort_order": 0,
+	})
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/accounts", bytes.NewReader(createBody))
+	r = r.WithContext(setUserID(r.Context(), "user1"))
+	h.Create(w, r)
+	var created map[string]string
+	json.NewDecoder(w.Body).Decode(&created)
+	id := created["id"]
+
+	// patch it
+	patchBody, _ := json.Marshal(map[string]interface{}{
+		"name": "New", "type": "expense", "sort_order": 2,
+	})
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest(http.MethodPatch, "/accounts/"+id, bytes.NewReader(patchBody))
+	r2 = r2.WithContext(setUserID(r2.Context(), "user1"))
+	r2 = setChiURLParam(r2, "id", id)
+	h.Update(w2, r2)
+	if w2.Code != http.StatusNoContent {
+		t.Errorf("want 204, got %d: %s", w2.Code, w2.Body.String())
+	}
+}
+
+func TestAccountsHandler_Update_WrongUser(t *testing.T) {
+	repo := newTestAccountRepo()
+	svc := accountingsvc.NewAccountService(repo, &testJournalRepo{})
+	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
+
+	createBody, _ := json.Marshal(map[string]interface{}{
+		"name": "X", "type": "asset", "currency": "VND", "is_group": false, "sort_order": 0,
+	})
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/accounts", bytes.NewReader(createBody))
+	r = r.WithContext(setUserID(r.Context(), "user1"))
+	h.Create(w, r)
+	var created map[string]string
+	json.NewDecoder(w.Body).Decode(&created)
+	id := created["id"]
+
+	patchBody, _ := json.Marshal(map[string]interface{}{"name": "Hacked", "type": "expense"})
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest(http.MethodPatch, "/accounts/"+id, bytes.NewReader(patchBody))
+	r2 = r2.WithContext(setUserID(r2.Context(), "user2"))
+	r2 = setChiURLParam(r2, "id", id)
+	h.Update(w2, r2)
+	if w2.Code == http.StatusNoContent {
+		t.Error("want non-204 for wrong user")
+	}
+}
+
+func TestAccountsHandler_Create_WithAssetMeta(t *testing.T) {
+	repo := newTestAccountRepo()
+	svc := accountingsvc.NewAccountService(repo, &testJournalRepo{})
+	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
+
+	purchasedAt := "2024-01-15"
+	body, _ := json.Marshal(map[string]interface{}{
+		"name": "Car", "type": "asset", "currency": "VND",
+		"asset_meta": map[string]interface{}{
+			"purchase_value":    500000000,
+			"purchased_at":      purchasedAt,
+			"depreciation_rate": 0.2,
+			"notes":             "Toyota",
+		},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/accounts", bytes.NewReader(body))
+	req = req.WithContext(withUserID(req.Context(), "user1"))
+	rr := httptest.NewRecorder()
+	h.Create(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Errorf("want 201, got %d: %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestAccountsHandler_Update_BadJSON(t *testing.T) {
+	repo := newTestAccountRepo()
+	svc := accountingsvc.NewAccountService(repo, &testJournalRepo{})
+	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
+
+	r := httptest.NewRequest(http.MethodPatch, "/accounts/foo", bytes.NewReader([]byte("bad json")))
+	r = r.WithContext(setUserID(r.Context(), "user1"))
+	r = setChiURLParam(r, "id", "foo")
+	w := httptest.NewRecorder()
+	h.Update(w, r)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", w.Code)
+	}
+}
+
+func TestAccountsHandler_Update_MissingName(t *testing.T) {
+	repo := newTestAccountRepo()
+	svc := accountingsvc.NewAccountService(repo, &testJournalRepo{})
+	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
+
+	body, _ := json.Marshal(map[string]interface{}{"type": "asset"})
+	r := httptest.NewRequest(http.MethodPatch, "/accounts/foo", bytes.NewReader(body))
+	r = r.WithContext(setUserID(r.Context(), "user1"))
+	r = setChiURLParam(r, "id", "foo")
+	w := httptest.NewRecorder()
+	h.Update(w, r)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", w.Code)
+	}
+}
+
+func TestAccountsHandler_Update_WithAssetMeta(t *testing.T) {
+	repo := newTestAccountRepo()
+	svc := accountingsvc.NewAccountService(repo, &testJournalRepo{})
+	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
+
+	// create account
+	createBody, _ := json.Marshal(map[string]interface{}{
+		"name": "House", "type": "asset", "currency": "VND",
+	})
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/accounts", bytes.NewReader(createBody))
+	r = r.WithContext(withUserID(r.Context(), "user1"))
+	h.Create(w, r)
+	var created map[string]string
+	json.NewDecoder(w.Body).Decode(&created)
+	id := created["id"]
+
+	patchBody, _ := json.Marshal(map[string]interface{}{
+		"name": "House Updated", "type": "asset",
+		"asset_meta": map[string]interface{}{
+			"purchase_value":    1000000000,
+			"purchased_at":      "2023-06-01",
+			"depreciation_rate": 0.05,
+			"notes":             "main house",
+		},
+	})
+	w2 := httptest.NewRecorder()
+	r2 := httptest.NewRequest(http.MethodPatch, "/accounts/"+id, bytes.NewReader(patchBody))
+	r2 = r2.WithContext(setUserID(r2.Context(), "user1"))
+	r2 = setChiURLParam(r2, "id", id)
+	h.Update(w2, r2)
+	if w2.Code != http.StatusNoContent {
+		t.Errorf("want 204, got %d: %s", w2.Code, w2.Body.String())
 	}
 }
