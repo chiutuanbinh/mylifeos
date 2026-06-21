@@ -6,8 +6,8 @@ import {
 } from 'antd'
 import { PlusOutlined, FolderOutlined, FileOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { getAccounts, createAccount, createJournalEntry, getJournalNetWorth } from '../api/endpoints'
-import type { Account, CreateAccountRequest, CreateJournalEntryRequest } from '../api/types'
+import { getAccounts, createAccount, createJournalEntry, getJournalEntries, getJournalNetWorth } from '../api/endpoints'
+import type { Account, CreateAccountRequest, CreateJournalEntryRequest, JournalEntry } from '../api/types'
 
 function normalSide(type: Account['type']): 'debit' | 'credit' {
   return type === 'asset' || type === 'expense' ? 'debit' : 'credit'
@@ -257,6 +257,7 @@ function JournalTab() {
   const qc = useQueryClient()
 
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
+  const { data: entries = [], isLoading: entriesLoading } = useQuery({ queryKey: ['journal-entries'], queryFn: getJournalEntries })
   const { data: nw } = useQuery({ queryKey: ['journal-networth'], queryFn: getJournalNetWorth })
 
   const leafAccounts = accounts.filter(a => !a.is_group)
@@ -278,6 +279,7 @@ function JournalTab() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['journal-networth'] })
+      qc.invalidateQueries({ queryKey: ['journal-entries'] })
       setAddOpen(false)
       form.resetFields()
     },
@@ -302,9 +304,38 @@ function JournalTab() {
           </Button>
         }
       >
-        <div style={{ color: '#999', padding: '24px 0', textAlign: 'center' }}>
-          Journal history coming soon
-        </div>
+        {entriesLoading ? <Spin /> : (
+          <Table<JournalEntry>
+            dataSource={[...entries].reverse()}
+            rowKey="id"
+            size="small"
+            pagination={{ pageSize: 20, size: 'small' }}
+            scroll={{ x: true }}
+            columns={[
+              { title: 'Date', dataIndex: 'date', width: 110 },
+              { title: 'Description', dataIndex: 'description' },
+              {
+                title: 'Lines', dataIndex: 'lines',
+                render: (lines: JournalEntry['lines']) => (
+                  <div style={{ fontSize: 12 }}>
+                    {lines.map(l => {
+                      const acct = accounts.find(a => a.id === l.account_id)
+                      return (
+                        <div key={l.id}>
+                          <Tag color={l.side === 'debit' ? 'blue' : 'green'} style={{ fontSize: 11 }}>
+                            {l.side === 'debit' ? 'DR' : 'CR'}
+                          </Tag>
+                          {acct?.name ?? l.account_id} — {fmtVND(l.amount)}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ),
+              },
+            ]}
+            locale={{ emptyText: 'No entries yet. Record your first entry above.' }}
+          />
+        )}
       </Card>
 
       <Modal
@@ -448,7 +479,7 @@ function JournalTab() {
 export function AccountingPage() {
   return (
     <Tabs
-      defaultActiveKey="accounts"
+      defaultActiveKey="journal"
       items={[
         { key: 'accounts', label: 'Accounts', children: <AccountsTab /> },
         { key: 'journal', label: 'Journal', children: <JournalTab /> },

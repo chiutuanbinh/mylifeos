@@ -143,6 +143,53 @@ func TestJournalHandler_RecordTransaction_BadDate(t *testing.T) {
 	}
 }
 
+func TestJournalHandler_ListEntries_ReturnsJSON(t *testing.T) {
+	jRepo := &testJournalRepo{}
+	aRepo := newTestAccountRepoWithIDs("user1", "acc-food", "acc-visa")
+	pub := &testPublisher{}
+
+	journalSvc := accountingsvc.NewJournalService(jRepo, aRepo, pub)
+	nwQuery := accountingsvc.NewNetWorthQuery(aRepo, jRepo)
+	h := httphandler.NewJournalHandler(journalSvc, nwQuery)
+
+	// seed one entry via RecordTransaction so the repo has data
+	seedBody, _ := json.Marshal(map[string]interface{}{
+		"date":        "2026-07-01",
+		"description": "Coffee",
+		"lines": []map[string]interface{}{
+			{"account_id": "acc-food", "amount": 50000, "side": "debit"},
+			{"account_id": "acc-visa", "amount": 50000, "side": "credit"},
+		},
+	})
+	seedReq := httptest.NewRequest(http.MethodPost, "/api/journal/entries", bytes.NewReader(seedBody))
+	seedReq = seedReq.WithContext(withUserID(seedReq.Context(), "user1"))
+	h.RecordTransaction(httptest.NewRecorder(), seedReq)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/journal/entries", nil)
+	req = req.WithContext(withUserID(req.Context(), "user1"))
+	rr := httptest.NewRecorder()
+
+	h.ListEntries(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+	var entries []map[string]interface{}
+	if err := json.NewDecoder(rr.Body).Decode(&entries); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("want 1 entry, got %d", len(entries))
+	}
+	if entries[0]["description"] != "Coffee" {
+		t.Errorf("want description Coffee, got %v", entries[0]["description"])
+	}
+	lines, ok := entries[0]["lines"].([]interface{})
+	if !ok || len(lines) != 2 {
+		t.Errorf("want 2 lines, got %v", entries[0]["lines"])
+	}
+}
+
 func TestJournalHandler_NetWorth_ReturnsJSON(t *testing.T) {
 	jRepo := &testJournalRepo{}
 	aRepo := newTestAccountRepo()
