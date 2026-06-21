@@ -20,6 +20,7 @@ type RecordTransactionCmd struct {
 	Description string
 	Memo        string
 	Lines       []LineCmd
+	GoalIDs     []string
 }
 
 type AssetMetaCmd struct {

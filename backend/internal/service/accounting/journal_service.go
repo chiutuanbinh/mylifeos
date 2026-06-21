@@ -71,6 +71,11 @@ func (s *JournalService) RecordTransaction(ctx context.Context, cmd RecordTransa
 	if err := s.journal.Save(ctx, entry); err != nil {
 		return "", err
 	}
+	if len(cmd.GoalIDs) > 0 {
+		if err := s.journal.SaveGoalLinks(ctx, string(entry.ID()), cmd.UserID, cmd.GoalIDs); err != nil {
+			return "", err
+		}
+	}
 	for _, ev := range entry.Events() {
 		if err := s.pub.Publish(ctx, ev); err != nil {
 			return "", err

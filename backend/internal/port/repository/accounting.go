@@ -21,4 +21,5 @@ type AccountRepo interface {
 type JournalRepo interface {
 	Save(ctx context.Context, e *accounting.JournalEntry) error
 	FindByUser(ctx context.Context, userID string, from, to time.Time) ([]*accounting.JournalEntry, error)
+	SaveGoalLinks(ctx context.Context, entryID, userID string, goalIDs []string) error
 }

@@ -23,9 +23,10 @@ func NewJournalHandler(journal *accountingsvc.JournalService, networth *accounti
 func (h *JournalHandler) RecordTransaction(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 	var req struct {
-		Date        string `json:"date"`
-		Description string `json:"description"`
-		Memo        string `json:"memo"`
+		Date        string   `json:"date"`
+		Description string   `json:"description"`
+		Memo        string   `json:"memo"`
+		GoalIDs     []string `json:"goal_ids"`
 		Lines       []struct {
 			AccountID string          `json:"account_id"`
 			Amount    decimal.Decimal `json:"amount"`
@@ -61,6 +62,7 @@ func (h *JournalHandler) RecordTransaction(w http.ResponseWriter, r *http.Reques
 		Description: req.Description,
 		Memo:        req.Memo,
 		Lines:       lines,
+		GoalIDs:     req.GoalIDs,
 	}
 	id, err := h.journal.RecordTransaction(r.Context(), cmd)
 	if err != nil {

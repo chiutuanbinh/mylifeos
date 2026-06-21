@@ -15,7 +15,8 @@ import (
 )
 
 type testJournalRepo struct {
-	saved []*accounting.JournalEntry
+	saved     []*accounting.JournalEntry
+	goalLinks map[string][]string // entryID -> goalIDs
 }
 
 func (r *testJournalRepo) Save(_ context.Context, e *accounting.JournalEntry) error {
@@ -25,6 +26,14 @@ func (r *testJournalRepo) Save(_ context.Context, e *accounting.JournalEntry) er
 
 func (r *testJournalRepo) FindByUser(_ context.Context, _ string, _, _ time.Time) ([]*accounting.JournalEntry, error) {
 	return r.saved, nil
+}
+
+func (r *testJournalRepo) SaveGoalLinks(_ context.Context, entryID, _ string, goalIDs []string) error {
+	if r.goalLinks == nil {
+		r.goalLinks = map[string][]string{}
+	}
+	r.goalLinks[entryID] = goalIDs
+	return nil
 }
 
 type testPublisher struct{}
@@ -39,6 +48,37 @@ func newTestAccountRepoWithIDs(userID string, ids ...string) *testAccountRepo {
 		r.accounts[a.ID()] = a
 	}
 	return r
+}
+
+func TestJournalHandler_RecordTransaction_WithGoalIDs(t *testing.T) {
+	jRepo := &testJournalRepo{}
+	aRepo := newTestAccountRepoWithIDs("user1", "acc-food", "acc-visa")
+	pub := &testPublisher{}
+
+	journalSvc := accountingsvc.NewJournalService(jRepo, aRepo, pub)
+	nwQuery := accountingsvc.NewNetWorthQuery(aRepo, jRepo)
+	h := httphandler.NewJournalHandler(journalSvc, nwQuery)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"date":        "2026-07-01",
+		"description": "Coffee",
+		"goal_ids":    []string{"goal-1", "goal-2"},
+		"lines": []map[string]interface{}{
+			{"account_id": "acc-food", "amount": 150000, "side": "debit"},
+			{"account_id": "acc-visa", "amount": 150000, "side": "credit"},
+		},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/journal/entries", bytes.NewReader(body))
+	req = req.WithContext(withUserID(req.Context(), "user1"))
+	rr := httptest.NewRecorder()
+	h.RecordTransaction(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Errorf("want 201, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if len(jRepo.goalLinks) == 0 {
+		t.Error("expected goal links to be saved")
+	}
 }
 
 func TestJournalHandler_RecordTransaction_Balanced(t *testing.T) {
