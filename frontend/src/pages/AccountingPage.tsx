@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Tabs, Card, Table, Tag, Button, Form, Input, Select, Switch,
   InputNumber, Modal, Spin, Badge, Checkbox, Radio, Collapse, Row, Col,
-  Popconfirm, message,
+  Popconfirm, message, Typography, Divider,
 } from 'antd'
-import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined, DeleteOutlined, QuestionCircleOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { getAccounts, createAccount, updateAccount, deleteAccount, createJournalEntry, getJournalEntries, getJournalNetWorth } from '../api/endpoints'
 import { ReportsTab } from './ReportsTab'
@@ -741,17 +741,89 @@ export function AccountingPage() {
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
   const { data: entries = [] } = useQuery({ queryKey: ['journal-entries'], queryFn: getJournalEntries })
   const [activeTab, setActiveTab] = useTabParam('journal', ['journal', 'accounts', 'assets', 'reports'])
+  const [helpOpen, setHelpOpen] = useState(false)
 
   return (
-    <Tabs
-      activeKey={activeTab}
-      onChange={setActiveTab}
-      items={[
-        { key: 'journal', label: 'Journal', children: <JournalTab /> },
-        { key: 'accounts', label: 'Accounts', children: <AccountsTab /> },
-        { key: 'assets', label: 'Assets', children: <AssetsTab /> },
-        { key: 'reports', label: 'Reports', children: <ReportsTab accounts={accounts} entries={entries} /> },
-      ]}
-    />
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>Accounting</Typography.Title>
+        <Button
+          type="text"
+          icon={<QuestionCircleOutlined />}
+          onClick={() => setHelpOpen(true)}
+          title="How double-entry accounting works"
+        />
+      </div>
+
+      <Modal
+        open={helpOpen}
+        onCancel={() => setHelpOpen(false)}
+        footer={null}
+        width={620}
+        title="How double-entry accounting works"
+      >
+        <Typography.Paragraph>
+          Every financial transaction affects at least two accounts. The total of all debits always equals
+          the total of all credits — this is the core invariant that keeps your books balanced.
+        </Typography.Paragraph>
+
+        <Divider>Debits and credits</Divider>
+        <Typography.Paragraph>
+          The rule depends on account type:
+        </Typography.Paragraph>
+        <ul>
+          <li><strong>Assets &amp; Expenses</strong> — increase with a <em>debit</em>, decrease with a <em>credit</em></li>
+          <li><strong>Liabilities, Equity &amp; Income</strong> — increase with a <em>credit</em>, decrease with a <em>debit</em></li>
+        </ul>
+        <Typography.Paragraph>
+          Example: you receive your salary (₫10,000,000). Debit <em>Bank Account</em> (asset ↑), credit <em>Salary</em> (income ↑).
+          Both sides are ₫10,000,000 — books stay balanced.
+        </Typography.Paragraph>
+
+        <Divider>How this app uses it</Divider>
+        <Typography.Paragraph>
+          <strong>Chart of accounts</strong> — the Accounts tab lists every account grouped by type.
+          Leaf accounts hold journal lines; group accounts aggregate their children.
+        </Typography.Paragraph>
+        <Typography.Paragraph>
+          <strong>Journal entries</strong> — each entry in the Journal tab has two or more lines.
+          The app enforces that debits = credits before saving.
+        </Typography.Paragraph>
+        <Typography.Paragraph>
+          <strong>Reports</strong> — the Reports tab derives your Balance Sheet (assets vs liabilities + equity)
+          and P&amp;L (income vs expenses) directly from the journal.
+        </Typography.Paragraph>
+
+        <Divider>Learn more</Divider>
+        <ul>
+          <li>
+            <Typography.Link href="https://en.wikipedia.org/wiki/Double-entry_bookkeeping" target="_blank" rel="noopener noreferrer">
+              Wikipedia — Double-entry bookkeeping
+            </Typography.Link>
+          </li>
+          <li>
+            <Typography.Link href="https://www.investopedia.com/terms/d/double-entry.asp" target="_blank" rel="noopener noreferrer">
+              Investopedia — Double Entry
+            </Typography.Link>
+          </li>
+          <li>
+            <Typography.Link href="https://www.accountingcoach.com/debits-and-credits/explanation" target="_blank" rel="noopener noreferrer">
+              AccountingCoach — Debits and Credits
+            </Typography.Link>
+          </li>
+        </ul>
+      </Modal>
+
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { key: 'journal', label: 'Journal', children: <JournalTab /> },
+          { key: 'accounts', label: 'Accounts', children: <AccountsTab /> },
+          { key: 'assets', label: 'Assets', children: <AssetsTab /> },
+          { key: 'reports', label: 'Reports', children: <ReportsTab accounts={accounts} entries={entries} /> },
+        ]}
+      />
+    </>
   )
 }
