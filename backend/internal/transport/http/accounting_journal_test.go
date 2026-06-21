@@ -12,6 +12,7 @@ import (
 	"github.com/chiutuanbinh/mylifeos/backend/internal/domain/accounting"
 	accountingsvc "github.com/chiutuanbinh/mylifeos/backend/internal/service/accounting"
 	httphandler "github.com/chiutuanbinh/mylifeos/backend/internal/transport/http"
+	"github.com/shopspring/decimal"
 )
 
 type testJournalRepo struct {
@@ -227,6 +228,39 @@ func TestJournalHandler_ListEntries_ReturnsJSON(t *testing.T) {
 	lines, ok := entries[0]["lines"].([]interface{})
 	if !ok || len(lines) != 2 {
 		t.Errorf("want 2 lines, got %v", entries[0]["lines"])
+	}
+}
+
+func TestJournalHandler_ListEntries_IncludesGoalIDs(t *testing.T) {
+	entry := accounting.ReconstituteEntry("e1", "user1", time.Now(), "desc", "")
+	entry.SetGoalIDs([]string{"g1", "g2"})
+	entry.ReconstituteLine("l1", "acc1", accounting.Money{Amount: decimal.NewFromInt(1), Currency: "VND"}, accounting.Debit)
+	entry.ReconstituteLine("l2", "acc2", accounting.Money{Amount: decimal.NewFromInt(1), Currency: "VND"}, accounting.Credit)
+
+	jRepo := &testJournalRepo{saved: []*accounting.JournalEntry{entry}}
+	aRepo := newTestAccountRepoWithIDs("user1", "acc1", "acc2")
+	pub := &testPublisher{}
+
+	journalSvc := accountingsvc.NewJournalService(jRepo, aRepo, pub)
+	nwQuery := accountingsvc.NewNetWorthQuery(aRepo, jRepo)
+	h := httphandler.NewJournalHandler(journalSvc, nwQuery)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/journal/entries", nil)
+	req = req.WithContext(withUserID(req.Context(), "user1"))
+	rr := httptest.NewRecorder()
+	h.ListEntries(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d", rr.Code)
+	}
+	var result []map[string]interface{}
+	json.NewDecoder(rr.Body).Decode(&result)
+	if len(result) == 0 {
+		t.Fatal("expected entries")
+	}
+	goalIDs, ok := result[0]["goal_ids"].([]interface{})
+	if !ok || len(goalIDs) != 2 {
+		t.Errorf("expected 2 goal_ids, got %v", result[0]["goal_ids"])
 	}
 }
 

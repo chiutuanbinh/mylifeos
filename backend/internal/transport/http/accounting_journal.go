@@ -94,6 +94,7 @@ func (h *JournalHandler) ListEntries(w http.ResponseWriter, r *http.Request) {
 		Description string     `json:"description"`
 		Memo        string     `json:"memo"`
 		Lines       []lineResp `json:"lines"`
+		GoalIDs     []string   `json:"goal_ids"`
 	}
 	result := make([]entryResp, 0, len(entries))
 	for _, e := range entries {
@@ -107,12 +108,17 @@ func (h *JournalHandler) ListEntries(w http.ResponseWriter, r *http.Request) {
 				Side:      string(l.Side()),
 			})
 		}
+		goalIDs := e.GoalIDs()
+		if goalIDs == nil {
+			goalIDs = []string{}
+		}
 		result = append(result, entryResp{
 			ID:          string(e.ID()),
 			Date:        e.Date().Format("2006-01-02"),
 			Description: e.Description(),
 			Memo:        e.Memo(),
 			Lines:       lines,
+			GoalIDs:     goalIDs,
 		})
 	}
 	w.Header().Set("Content-Type", "application/json")
