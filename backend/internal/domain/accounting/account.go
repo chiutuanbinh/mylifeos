@@ -1,6 +1,11 @@
 package accounting
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+
+	"github.com/shopspring/decimal"
+)
 
 type AccountID string
 type AccountType string
@@ -19,6 +24,13 @@ const (
 	Credit Side = "credit"
 )
 
+type AssetMeta struct {
+	PurchaseValue    *decimal.Decimal
+	PurchasedAt      *time.Time
+	DepreciationRate *decimal.Decimal
+	Notes            string
+}
+
 type Account struct {
 	id        AccountID
 	userID    string
@@ -29,6 +41,7 @@ type Account struct {
 	isGroup   bool
 	archived  bool
 	sortOrder int
+	assetMeta *AssetMeta
 }
 
 func NewAccount(userID string, parentID *string, name string, acctType AccountType, currency string, isGroup bool, sortOrder int) *Account {
@@ -68,15 +81,23 @@ func ReconstituteAccount(id, userID string, parentID *string, name string, acctT
 	}
 }
 
-func (a *Account) ID() AccountID       { return a.id }
-func (a *Account) UserID() string       { return a.userID }
-func (a *Account) ParentID() *AccountID { return a.parentID }
-func (a *Account) Name() string         { return a.name }
-func (a *Account) Type() AccountType    { return a.acctType }
-func (a *Account) Currency() string     { return a.currency }
-func (a *Account) IsGroup() bool        { return a.isGroup }
-func (a *Account) Archived() bool       { return a.archived }
-func (a *Account) SortOrder() int       { return a.sortOrder }
+func (a *Account) ID() AccountID        { return a.id }
+func (a *Account) UserID() string        { return a.userID }
+func (a *Account) ParentID() *AccountID  { return a.parentID }
+func (a *Account) Name() string          { return a.name }
+func (a *Account) Type() AccountType     { return a.acctType }
+func (a *Account) Currency() string      { return a.currency }
+func (a *Account) IsGroup() bool         { return a.isGroup }
+func (a *Account) Archived() bool        { return a.archived }
+func (a *Account) SortOrder() int        { return a.sortOrder }
+func (a *Account) AssetMeta() *AssetMeta { return a.assetMeta }
+
+// Mutation methods
+func (a *Account) Rename(name string)           { a.name = name }
+func (a *Account) ChangeType(t AccountType)     { a.acctType = t }
+func (a *Account) Reparent(parentID *AccountID) { a.parentID = parentID }
+func (a *Account) Reorder(n int)                { a.sortOrder = n }
+func (a *Account) AttachAssetMeta(m *AssetMeta) { a.assetMeta = m }
 
 func (a *Account) NormalBalance() Side {
 	switch a.acctType {
