@@ -29,7 +29,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetJournalEntries.mockResolvedValue([])
   mockGetJournalNetWorth.mockResolvedValue({ net_worth: '0', currency: 'VND', net_income_ytd: '0' })
-  vi.mocked(endpoints.getTransactions).mockResolvedValue([])
+  /* getTransactions removed */
   vi.mocked(endpoints.getBudgets).mockResolvedValue([])
   vi.mocked(endpoints.getNetWorthSnapshots).mockResolvedValue([])
   vi.mocked(endpoints.getBankRates).mockResolvedValue([])
@@ -120,7 +120,7 @@ describe('FinancePage — SetupWizard', () => {
 
 describe('FinancePage — Budgets tab', () => {
   beforeEach(() => {
-    vi.mocked(endpoints.getTransactions).mockResolvedValue([])
+    /* getTransactions removed */
     vi.mocked(endpoints.getBudgets).mockResolvedValue([])
     mockGetAccounts.mockResolvedValue([])
     mockGetJournalEntries.mockResolvedValue([])
@@ -129,7 +129,7 @@ describe('FinancePage — Budgets tab', () => {
 
   it('renders Budgets tab without crashing', async () => {
     // mock all endpoints used by FinancePage
-    vi.mocked(endpoints.getTransactions).mockResolvedValue([])
+    /* getTransactions removed */
     wrap(<FinancePage />)
     fireEvent.click(screen.getByRole('tab', { name: /budgets/i }))
     expect(await screen.findByText('No budgets yet.')).toBeTruthy()

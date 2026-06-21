@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 import type {
-  Transaction, Budget, Goal, KeyResult, KRLog,
+  Budget, Goal, KeyResult, KRLog,
   Note, Event, Asset, Liability, UserSettings, DashboardSummary,
   NetWorthSnapshot, BenchmarkData, BankRate, NewsItem,
   Account, CreateAccountRequest, UpdateAccountRequest, CreateJournalEntryRequest, NetWorthResult, JournalEntry,
@@ -8,13 +8,6 @@ import type {
 
 export const getDashboardSummary = () =>
   apiClient.get<DashboardSummary>('/dashboard/summary').then(r => r.data)
-
-export const getTransactions = (params?: { category?: string; from?: string; to?: string; limit?: number }) =>
-  apiClient.get<Transaction[]>('/transactions', { params }).then(r => r.data)
-export const createTransaction = (data: Omit<Transaction, 'id' | 'user_id' | 'created_at'>) =>
-  apiClient.post<Transaction>('/transactions', data).then(r => r.data)
-export const deleteTransaction = (id: string) =>
-  apiClient.delete(`/transactions/${id}`)
 
 export const getBudgets = () =>
   apiClient.get<Budget[]>('/budgets').then(r => r.data)

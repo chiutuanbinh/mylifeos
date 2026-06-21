@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Row, Col, Card, Button, Modal, Form, Input, Switch, Spin, Tooltip, message, Tag } from 'antd'
-import { PlusOutlined, DeleteOutlined, LeftOutlined, RightOutlined, SyncOutlined, TrophyOutlined, DollarOutlined } from '@ant-design/icons'
-import { getEvents, createEvent, deleteEvent, syncGoogleCalendar, getGoals, getTransactions } from '../api/endpoints'
+import { PlusOutlined, DeleteOutlined, LeftOutlined, RightOutlined, SyncOutlined, TrophyOutlined } from '@ant-design/icons'
+import { getEvents, createEvent, deleteEvent, syncGoogleCalendar, getGoals } from '../api/endpoints'
 import { supabase, getStoredProviderToken } from '../store/auth'
 
 export function CalendarPage() {
@@ -24,10 +24,6 @@ export function CalendarPage() {
   })
 
   const { data: goals = [] } = useQuery({ queryKey: ['goals'], queryFn: getGoals })
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['transactions', year, month],
-    queryFn: () => getTransactions({ from: fromDate.slice(0, 10), to: toDate.slice(0, 10) }),
-  })
 
   // Goals with target_date in current month → deadline markers
   const goalsByDay = goals.reduce<Record<number, typeof goals>>((acc, g) => {
@@ -41,17 +37,6 @@ export function CalendarPage() {
     return acc
   }, {})
 
-  // Transactions grouped by day
-  const txByDay = transactions.reduce<Record<number, typeof transactions>>((acc, tx) => {
-    const d = new Date(tx.date)
-    if (d.getFullYear() === year && d.getMonth() === month) {
-      const day = d.getDate()
-      acc[day] = acc[day] || []
-      acc[day].push(tx)
-    }
-    return acc
-  }, {})
-
   // Track synced months so we don't re-sync on every render
   const syncedRef = useRef(new Set<string>())
 
@@ -61,8 +46,6 @@ export function CalendarPage() {
     if (!manual && syncedRef.current.has(key)) return
     setSyncing(true)
     try {
-      // Prefer stored token; fall back to live session (covers the first load
-      // race where onAuthStateChange hasn't fired yet to persist the token).
       let providerToken = getStoredProviderToken()
       if (!providerToken) {
         const { data } = await supabase.auth.getSession()
@@ -123,7 +106,6 @@ export function CalendarPage() {
     return d.getDate() === selectedDay && d.getMonth() === month
   })
   const dayGoals = goalsByDay[selectedDay] || []
-  const dayTx = txByDay[selectedDay] || []
 
   const eventsByDay = events.reduce<Record<number, typeof events>>((acc, e) => {
     const d = new Date(e.start_at).getDate()
@@ -173,14 +155,12 @@ export function CalendarPage() {
                     const isSelected = day === selectedDay
                     const hasEvents = !!eventsByDay[day]?.length
                     const hasGoal = !!goalsByDay[day]?.length
-                    const hasTx = !!txByDay[day]?.length
                     return (
                       <div key={day} onClick={() => setSelectedDay(day)} style={{ textAlign: 'center', padding: '6px 2px', cursor: 'pointer', borderRadius: 4, background: isSelected ? '#1677ff' : isToday ? '#e6f4ff' : 'transparent', color: isSelected ? '#fff' : isToday ? '#1677ff' : '#222', fontSize: 13, position: 'relative' }}>
                         {day}
                         <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
                           {hasEvents && <div style={{ width: 4, height: 4, borderRadius: '50%', background: isSelected ? '#fff' : '#1677ff' }} />}
                           {hasGoal && <div style={{ width: 4, height: 4, borderRadius: '50%', background: isSelected ? '#fff' : '#faad14' }} />}
-                          {hasTx && <div style={{ width: 4, height: 4, borderRadius: '50%', background: isSelected ? '#fff' : '#eb2f96' }} />}
                         </div>
                       </div>
                     )
@@ -192,7 +172,7 @@ export function CalendarPage() {
         </Col>
         <Col span={8}>
           <Card size="small" title={<span style={{ fontSize: 13 }}>{monthName} {selectedDay}</span>}>
-            {dayEvents.length === 0 && dayGoals.length === 0 && dayTx.length === 0 && (
+            {dayEvents.length === 0 && dayGoals.length === 0 && (
               <div style={{ color: '#bbb', textAlign: 'center', padding: 20, fontSize: 12 }}>Nothing this day.</div>
             )}
 
@@ -219,23 +199,11 @@ export function CalendarPage() {
                 <Tag color={g.color} style={{ fontSize: 10 }}>{g.status}</Tag>
               </div>
             ))}
-
-            {dayTx.map(tx => (
-              <div key={tx.id} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: '1px solid #f5f5f5', alignItems: 'center' }}>
-                <DollarOutlined style={{ color: '#eb2f96', fontSize: 14, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500 }}>{tx.description}</div>
-                  <div style={{ fontSize: 11, color: '#bbb' }}>{tx.category}</div>
-                </div>
-                <span style={{ fontSize: 12, color: tx.amount < 0 ? '#ff4d4f' : '#52c41a', fontWeight: 500 }}>{tx.amount < 0 ? '-' : '+'}${Math.abs(tx.amount).toFixed(2)}</span>
-              </div>
-            ))}
           </Card>
 
           <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, color: '#999' }}>
             <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#1677ff', marginRight: 3 }} />Events</span>
             <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#faad14', marginRight: 3 }} />Goals</span>
-            <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#eb2f96', marginRight: 3 }} />Wealth</span>
           </div>
         </Col>
       </Row>

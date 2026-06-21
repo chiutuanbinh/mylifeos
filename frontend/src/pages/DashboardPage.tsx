@@ -1,26 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Row, Col, Card, Progress, Table, Tag, Spin } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { Row, Col, Card, Progress, Spin } from 'antd'
 import { getDashboardSummary } from '../api/endpoints'
 import { Sparkline } from '../components/Sparkline'
 import { LiveNetWorthCard } from './LiveNetWorthCard'
-import type { Transaction } from '../api/types'
-
-const CAT_COLORS: Record<string, string> = {
-  Food: 'green', Income: 'blue', Entertainment: 'purple', Health: 'volcano',
-  Tech: 'cyan', Auto: 'orange', Utilities: 'gold', Shopping: 'magenta',
-}
-
-const fmtVND = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
-
-const txColumns: ColumnsType<Transaction> = [
-  { title: 'Date',        dataIndex: 'date',        width: 100, render: v => <span style={{ color: '#bbb', fontSize: 12, whiteSpace: 'nowrap' }}>{v}</span> },
-  { title: 'Description', dataIndex: 'description', ellipsis: true, render: v => <span style={{ fontSize: 12 }}>{v}</span> },
-  { title: 'Category',    dataIndex: 'category',    width: 120, render: c => <Tag color={CAT_COLORS[c]} style={{ fontSize: 11, margin: 0 }}>{c}</Tag> },
-  { title: 'Amount',      dataIndex: 'amount',      align: 'right', width: 140,
-    render: a => <span style={{ color: a > 0 ? '#52c41a' : '#ff4d4f', fontFamily: 'monospace', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{a > 0 ? '+' : '-'}{fmtVND(a)}</span> },
-]
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -53,7 +36,7 @@ export function DashboardPage() {
     },
     { label: "Today's Habits", val: `${data.habits_done_today} / ${data.habits_total}`, sub: `${habitPct}% complete`, subC: '#1677ff', pct: habitPct, nav: '/objectives' },
     { label: 'Goals (avg)',    val: `${data.goals_avg_progress}%`, sub: 'active OKRs', subC: '#722ed1', pct: data.goals_avg_progress, pctC: '#722ed1', nav: '/objectives' },
-    { label: 'Monthly Budget', val: `₫${Math.round(data.budget_total).toLocaleString('vi-VN')}`, sub: `₫${Math.round(data.budget_spent).toLocaleString('vi-VN')} spent · ${budgetPct}%`, subC: '#fa8c16', pct: budgetPct, pctC: '#fa8c16', nav: '/wealth' },
+    { label: 'Monthly Budget', val: `₫${Math.round(data.budget_total).toLocaleString('vi-VN')}`, sub: `₫${Math.round(data.budget_spent).toLocaleString('vi-VN')} spent · ${budgetPct}%`, subC: '#fa8c16', pct: budgetPct, pctC: '#fa8c16', nav: '/finance' },
   ]
 
   return (
@@ -63,7 +46,7 @@ export function DashboardPage() {
           <LiveNetWorthCard />
         </Col>
       </Row>
-      <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+      <Row gutter={[12, 12]}>
         {stats.map((s, i) => (
           <Col xs={12} sm={6} key={i}>
             <Card size="small" hoverable style={{ cursor: 'pointer' }} onClick={() => navigate(s.nav)}>
@@ -75,13 +58,6 @@ export function DashboardPage() {
             </Card>
           </Col>
         ))}
-      </Row>
-      <Row gutter={[12, 12]}>
-        <Col span={24}>
-          <Card size="small" title={<span style={{ fontSize: 13 }}>Recent Transactions</span>} extra={<a onClick={() => navigate('/wealth')} style={{ fontSize: 12 }}>View all →</a>}>
-            <Table dataSource={data.recent_transactions} columns={txColumns} size="small" pagination={false} rowKey="id" />
-          </Card>
-        </Col>
       </Row>
     </div>
   )
