@@ -410,6 +410,88 @@ func TestAccountsHandler_Update_MissingName(t *testing.T) {
 	}
 }
 
+func TestAccountsHandler_Delete_Success(t *testing.T) {
+	repo := newTestAccountRepo()
+	acct := accounting.NewAccount("user1", nil, "Cash", accounting.Asset, "VND", false, 0)
+	repo.accounts[acct.ID()] = acct
+
+	svc := accountingsvc.NewAccountService(repo, &testJournalRepo{})
+	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
+
+	r := httptest.NewRequest(http.MethodDelete, "/accounts/"+string(acct.ID()), nil)
+	r = r.WithContext(setUserID(r.Context(), "user1"))
+	r = setChiURLParam(r, "id", string(acct.ID()))
+	w := httptest.NewRecorder()
+	h.Delete(w, r)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("want 204, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestAccountsHandler_Delete_HasChildren(t *testing.T) {
+	repo := newTestAccountRepo()
+	parent := accounting.NewAccount("user1", nil, "Assets", accounting.Asset, "VND", true, 0)
+	parentIDStr := string(parent.ID())
+	child := accounting.NewAccount("user1", &parentIDStr, "Cash", accounting.Asset, "VND", false, 0)
+	repo.accounts[parent.ID()] = parent
+	repo.accounts[child.ID()] = child
+
+	svc := accountingsvc.NewAccountService(repo, &testJournalRepo{})
+	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
+
+	r := httptest.NewRequest(http.MethodDelete, "/accounts/"+string(parent.ID()), nil)
+	r = r.WithContext(setUserID(r.Context(), "user1"))
+	r = setChiURLParam(r, "id", string(parent.ID()))
+	w := httptest.NewRecorder()
+	h.Delete(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestAccountsHandler_Delete_HasJournalLines(t *testing.T) {
+	repo := newTestAccountRepo()
+	acct := accounting.NewAccount("user1", nil, "Cash", accounting.Asset, "VND", false, 0)
+	repo.accounts[acct.ID()] = acct
+
+	jr := &testJournalRepo{}
+	entry := accounting.NewJournalEntry("user1", time.Now(), "test")
+	_ = entry.AddLine(acct.ID(), accounting.Money{Amount: decimal.NewFromInt(100), Currency: "VND"}, accounting.Debit)
+	_ = entry.Post()
+	jr.saved = append(jr.saved, entry)
+
+	svc := accountingsvc.NewAccountService(repo, jr)
+	h := httphandler.NewAccountsHandler(svc, jr)
+
+	r := httptest.NewRequest(http.MethodDelete, "/accounts/"+string(acct.ID()), nil)
+	r = r.WithContext(setUserID(r.Context(), "user1"))
+	r = setChiURLParam(r, "id", string(acct.ID()))
+	w := httptest.NewRecorder()
+	h.Delete(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestAccountsHandler_Delete_NotFound(t *testing.T) {
+	repo := newTestAccountRepo()
+	svc := accountingsvc.NewAccountService(repo, &testJournalRepo{})
+	h := httphandler.NewAccountsHandler(svc, &testJournalRepo{})
+
+	r := httptest.NewRequest(http.MethodDelete, "/accounts/nonexistent", nil)
+	r = r.WithContext(setUserID(r.Context(), "user1"))
+	r = setChiURLParam(r, "id", "nonexistent")
+	w := httptest.NewRecorder()
+	h.Delete(w, r)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("want 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestAccountsHandler_Update_WithAssetMeta(t *testing.T) {
 	repo := newTestAccountRepo()
 	svc := accountingsvc.NewAccountService(repo, &testJournalRepo{})

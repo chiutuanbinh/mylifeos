@@ -2,6 +2,7 @@ package httphandler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -268,4 +269,24 @@ func (h *AccountsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *AccountsHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	id := chi.URLParam(r, "id")
+	err := h.svc.DeleteAccount(r.Context(), userID, id)
+	if err == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	switch {
+	case errors.Is(err, repository.ErrAccountNotFound):
+		http.Error(w, `{"error":"account not found"}`, http.StatusNotFound)
+	case errors.Is(err, accountingsvc.ErrAccountHasChildren):
+		http.Error(w, `{"error":"account has child accounts"}`, http.StatusBadRequest)
+	case errors.Is(err, accountingsvc.ErrAccountHasJournalLines):
+		http.Error(w, `{"error":"account has journal entries"}`, http.StatusBadRequest)
+	default:
+		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+	}
 }
