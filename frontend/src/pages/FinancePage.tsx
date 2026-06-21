@@ -939,7 +939,7 @@ export function FinancePage() {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>Accounting</Typography.Title>
+        <Typography.Title level={4} style={{ margin: 0 }}>Finance</Typography.Title>
         <Button
           type="text"
           icon={<QuestionCircleOutlined />}
