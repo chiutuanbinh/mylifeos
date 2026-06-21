@@ -3,6 +3,7 @@ package accountingsvc
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/domain/accounting"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/port/events"
@@ -17,6 +18,10 @@ type JournalService struct {
 
 func NewJournalService(journal repository.JournalRepo, accounts repository.AccountRepo, pub events.Publisher) *JournalService {
 	return &JournalService{journal: journal, accounts: accounts, pub: pub}
+}
+
+func (s *JournalService) ListByUser(ctx context.Context, userID string) ([]*accounting.JournalEntry, error) {
+	return s.journal.FindByUser(ctx, userID, time.Time{}, time.Now())
 }
 
 func (s *JournalService) RecordTransaction(ctx context.Context, cmd RecordTransactionCmd) (accounting.EntryID, error) {

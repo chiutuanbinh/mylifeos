@@ -72,6 +72,51 @@ func (h *JournalHandler) RecordTransaction(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]string{"id": string(id)})
 }
 
+func (h *JournalHandler) ListEntries(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+	entries, err := h.journal.ListByUser(r.Context(), userID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	type lineResp struct {
+		ID        string `json:"id"`
+		AccountID string `json:"account_id"`
+		Amount    string `json:"amount"`
+		Currency  string `json:"currency"`
+		Side      string `json:"side"`
+	}
+	type entryResp struct {
+		ID          string     `json:"id"`
+		Date        string     `json:"date"`
+		Description string     `json:"description"`
+		Memo        string     `json:"memo"`
+		Lines       []lineResp `json:"lines"`
+	}
+	result := make([]entryResp, 0, len(entries))
+	for _, e := range entries {
+		lines := make([]lineResp, 0, len(e.Lines()))
+		for _, l := range e.Lines() {
+			lines = append(lines, lineResp{
+				ID:        l.ID(),
+				AccountID: string(l.AccountID()),
+				Amount:    l.Money().Amount.String(),
+				Currency:  l.Money().Currency,
+				Side:      string(l.Side()),
+			})
+		}
+		result = append(result, entryResp{
+			ID:          string(e.ID()),
+			Date:        e.Date().Format("2006-01-02"),
+			Description: e.Description(),
+			Memo:        e.Memo(),
+			Lines:       lines,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
 func (h *JournalHandler) NetWorth(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 	nw, err := h.networth.Current(r.Context(), userID)

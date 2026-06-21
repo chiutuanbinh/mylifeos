@@ -157,6 +157,7 @@ func main() {
 
 		r.Get("/accounts",           accountsHandler.List)
 		r.Post("/accounts",          accountsHandler.Create)
+		r.Get("/journal/entries",    journalHandler.ListEntries)
 		r.Post("/journal/entries",   journalHandler.RecordTransaction)
 		r.Get("/journal/networth",   journalHandler.NetWorth)
 	})

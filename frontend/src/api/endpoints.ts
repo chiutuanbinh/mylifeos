@@ -3,7 +3,7 @@ import type {
   Transaction, Budget, Goal, KeyResult, KRLog,
   Note, Event, Asset, Liability, UserSettings, DashboardSummary,
   NetWorthSnapshot, BenchmarkData, BankRate, NewsItem,
-  Account, CreateAccountRequest, CreateJournalEntryRequest, NetWorthResult,
+  Account, CreateAccountRequest, CreateJournalEntryRequest, NetWorthResult, JournalEntry,
 } from './types'
 
 export const getDashboardSummary = () =>
@@ -121,6 +121,9 @@ export const createAccount = (data: CreateAccountRequest) =>
 
 export const createJournalEntry = (data: CreateJournalEntryRequest) =>
   apiClient.post<{ id: string }>('/journal/entries', data).then(r => r.data)
+
+export const getJournalEntries = () =>
+  apiClient.get<JournalEntry[]>('/journal/entries').then(r => r.data)
 
 export const getJournalNetWorth = () =>
   apiClient.get<NetWorthResult>('/journal/networth').then(r => r.data)
