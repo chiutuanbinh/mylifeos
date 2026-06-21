@@ -51,6 +51,11 @@ func (r *fakeAccountRepo) FindByNameAndType(_ context.Context, userID, name stri
 	return nil, repository.ErrAccountNotFound
 }
 
+func (r *fakeAccountRepo) Delete(_ context.Context, id accounting.AccountID) error {
+	delete(r.accounts, id)
+	return nil
+}
+
 type memJournalRepo struct {
 	entries []*accounting.JournalEntry
 }
