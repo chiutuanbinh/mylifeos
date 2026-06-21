@@ -375,6 +375,7 @@ func (m *errTxRepo) ListBudgets(_ context.Context, _ string) ([]finance.Budget, 
 func (m *errTxRepo) UpsertBudget(_ context.Context, _ finance.Budget) (finance.Budget, error) {
 	return finance.Budget{}, errDB
 }
+func (m *errTxRepo) DeleteBudget(_ context.Context, _, _ string) error { return errDB }
 func (m *errTxRepo) SumByUser(_ context.Context, _ string) (float64, error) { return 0, errDB }
 func (m *errTxRepo) SumSpentThisMonth(_ context.Context, _ string) (float64, error) {
 	return 0, errDB

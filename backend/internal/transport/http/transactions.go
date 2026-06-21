@@ -2,6 +2,7 @@ package httphandler
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -70,6 +71,21 @@ func (h *TransactionHandler) ListBudgets(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(bs)
+}
+
+func (h *TransactionHandler) DeleteBudget(w http.ResponseWriter, r *http.Request) {
+	uid := middleware.GetUserID(r)
+	category := chi.URLParam(r, "category")
+	err := h.repo.DeleteBudget(r.Context(), uid, category)
+	if errors.Is(err, repository.ErrBudgetNotFound) {
+		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *TransactionHandler) UpsertBudget(w http.ResponseWriter, r *http.Request) {

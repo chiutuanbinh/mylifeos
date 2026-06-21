@@ -109,3 +109,17 @@ func (r *pgTransactionRepo) SumSpentThisMonth(ctx context.Context, userID string
 		 AND date_trunc('month', date) = date_trunc('month', CURRENT_DATE)`, userID).Scan(&total)
 	return total, err
 }
+
+func (r *pgTransactionRepo) DeleteBudget(ctx context.Context, userID, category string) error {
+	tag, err := r.db.Exec(ctx,
+		`DELETE FROM budgets WHERE user_id = $1 AND category = $2`,
+		userID, category,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return repository.ErrBudgetNotFound
+	}
+	return nil
+}

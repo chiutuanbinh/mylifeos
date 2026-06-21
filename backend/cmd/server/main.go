@@ -111,6 +111,7 @@ func main() {
 		r.Delete("/transactions/{id}", txHandler.Delete)
 		r.Get("/budgets",              txHandler.ListBudgets)
 		r.Put("/budgets/{category}",   txHandler.UpsertBudget)
+		r.Delete("/budgets/{category}", txHandler.DeleteBudget)
 
 		r.Get("/kr-logs",                      krLogHandler.GetLogs)
 		r.Get("/key-results/{id}/logs",        krLogHandler.GetLogRange)
