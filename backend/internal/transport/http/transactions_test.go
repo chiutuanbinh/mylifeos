@@ -12,9 +12,13 @@ import (
 	httphandler "github.com/chiutuanbinh/mylifeos/backend/internal/transport/http"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/middleware"
 	"github.com/chiutuanbinh/mylifeos/backend/internal/domain/finance"
+	"github.com/chiutuanbinh/mylifeos/backend/internal/port/repository"
 )
 
-type mockTxRepo struct{ created *finance.Transaction }
+type mockTxRepo struct {
+	created *finance.Transaction
+	budgets []finance.Budget
+}
 
 func (m *mockTxRepo) List(_ context.Context, _, _, _, _ string, _, _ int) ([]finance.Transaction, error) {
 	return []finance.Transaction{{ID: "tx-1", Amount: 50.0, Category: "food"}}, nil
@@ -30,6 +34,15 @@ func (m *mockTxRepo) ListBudgets(_ context.Context, _ string) ([]finance.Budget,
 }
 func (m *mockTxRepo) UpsertBudget(_ context.Context, b finance.Budget) (finance.Budget, error) {
 	return b, nil
+}
+func (m *mockTxRepo) DeleteBudget(_ context.Context, userID, category string) error {
+	for i, b := range m.budgets {
+		if b.UserID == userID && b.Category == category {
+			m.budgets = append(m.budgets[:i], m.budgets[i+1:]...)
+			return nil
+		}
+	}
+	return repository.ErrBudgetNotFound
 }
 func (m *mockTxRepo) SumByUser(_ context.Context, _ string) (float64, error)         { return 0, nil }
 func (m *mockTxRepo) SumSpentThisMonth(_ context.Context, _ string) (float64, error) { return 0, nil }
@@ -158,5 +171,50 @@ func TestTransactionUpsertBudget_BadRequest(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestTransactionHandler_DeleteBudget(t *testing.T) {
+	repo := &mockTxRepo{
+		budgets: []finance.Budget{
+			{ID: "b1", UserID: "user-1", Category: "Food", MonthlyLimit: 500000},
+		},
+	}
+	h := httphandler.NewTransactionHandler(repo)
+
+	req := httptest.NewRequest(http.MethodDelete, "/budgets/Food", nil)
+	req = req.WithContext(withUserID(req.Context(), "user-1"))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, func() *chi.Context {
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("category", "Food")
+		return rctx
+	}()))
+	rr := httptest.NewRecorder()
+	h.DeleteBudget(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Errorf("want 204, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if len(repo.budgets) != 0 {
+		t.Errorf("expected budget to be deleted, still %d budgets", len(repo.budgets))
+	}
+}
+
+func TestTransactionHandler_DeleteBudget_NotFound(t *testing.T) {
+	repo := &mockTxRepo{budgets: []finance.Budget{}}
+	h := httphandler.NewTransactionHandler(repo)
+
+	req := httptest.NewRequest(http.MethodDelete, "/budgets/Nonexistent", nil)
+	req = req.WithContext(withUserID(req.Context(), "user-1"))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, func() *chi.Context {
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("category", "Nonexistent")
+		return rctx
+	}()))
+	rr := httptest.NewRecorder()
+	h.DeleteBudget(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("want 404, got %d", rr.Code)
 	}
 }

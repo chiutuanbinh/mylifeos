@@ -25,6 +25,8 @@ func (r *fakeJournalRepo) FindByUser(_ context.Context, _ string, _, _ time.Time
 	return r.saved, nil
 }
 
+func (r *fakeJournalRepo) SaveGoalLinks(_ context.Context, _, _ string, _ []string) error { return nil }
+
 type fakePublisher struct {
 	published []accounting.DomainEvent
 }

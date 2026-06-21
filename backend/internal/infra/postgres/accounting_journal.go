@@ -2,9 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
 
@@ -63,7 +65,74 @@ func (r *pgJournalRepo) FindByUser(ctx context.Context, userID string, from, to 
 		return nil, err
 	}
 	defer rows.Close()
-	return reconstituteEntries(rows)
+	entries, err := reconstituteEntries(rows)
+	if err != nil {
+		return nil, err
+	}
+	if len(entries) == 0 {
+		return entries, nil
+	}
+
+	// load goal links for all entries in one query
+	ids := make([]string, len(entries))
+	for i, e := range entries {
+		ids[i] = string(e.ID())
+	}
+	goalRows, err := r.db.Query(ctx,
+		`SELECT entry_id, goal_id FROM journal_entry_goals WHERE entry_id = ANY($1)`,
+		ids,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer goalRows.Close()
+	goalMap := map[string][]string{}
+	for goalRows.Next() {
+		var entryID, goalID string
+		if err := goalRows.Scan(&entryID, &goalID); err != nil {
+			return nil, err
+		}
+		goalMap[entryID] = append(goalMap[entryID], goalID)
+	}
+	if err := goalRows.Err(); err != nil {
+		return nil, err
+	}
+	for _, e := range entries {
+		if gids, ok := goalMap[string(e.ID())]; ok {
+			e.SetGoalIDs(gids)
+		}
+	}
+	return entries, nil
+}
+
+func (r *pgJournalRepo) SaveGoalLinks(ctx context.Context, entryID, userID string, goalIDs []string) error {
+	if len(goalIDs) == 0 {
+		return nil
+	}
+	batch := &pgx.Batch{}
+	for _, gid := range goalIDs {
+		batch.Queue(
+			`INSERT INTO journal_entry_goals (entry_id, goal_id, user_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+			entryID, gid, userID,
+		)
+	}
+	br := r.db.SendBatch(ctx, batch)
+	defer br.Close()
+	for range goalIDs {
+		if _, err := br.Exec(); err != nil {
+			// ignore FK violations (goal was deleted) — best-effort
+			if !isFKViolation(err) {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// isFKViolation returns true for PostgreSQL error code 23503 (foreign_key_violation).
+func isFKViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23503"
 }
 
 func nullDate(t time.Time) *time.Time {

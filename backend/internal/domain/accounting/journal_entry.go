@@ -32,6 +32,7 @@ type JournalEntry struct {
 	memo        string
 	lines       []JournalLine
 	events      []DomainEvent
+	goalIDs     []string // populated on reconstitution from DB
 }
 
 func NewJournalEntry(userID string, date time.Time, description string) *JournalEntry {
@@ -119,3 +120,5 @@ func (e *JournalEntry) Description() string   { return e.description }
 func (e *JournalEntry) Memo() string          { return e.memo }
 func (e *JournalEntry) Lines() []JournalLine  { return slices.Clone(e.lines) }
 func (e *JournalEntry) Events() []DomainEvent { return slices.Clone(e.events) }
+func (e *JournalEntry) GoalIDs() []string     { return slices.Clone(e.goalIDs) }
+func (e *JournalEntry) SetGoalIDs(ids []string) { e.goalIDs = ids }
