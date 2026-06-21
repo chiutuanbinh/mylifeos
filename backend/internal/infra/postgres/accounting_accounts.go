@@ -66,12 +66,12 @@ func (r *pgAccountRepo) FindByUser(ctx context.Context, userID string) ([]*accou
 	return scanAccounts(rows)
 }
 
-func (r *pgAccountRepo) FindByID(ctx context.Context, id accounting.AccountID) (*accounting.Account, error) {
+func (r *pgAccountRepo) FindByID(ctx context.Context, id accounting.AccountID, userID string) (*accounting.Account, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, user_id, parent_id, name, type, currency, is_group, archived, sort_order,
 		       purchase_value, purchased_at, depreciation_rate, asset_notes
-		FROM accounts WHERE id = $1`,
-		string(id),
+		FROM accounts WHERE id = $1 AND user_id = $2`,
+		string(id), userID,
 	)
 	if err != nil {
 		return nil, err
@@ -108,8 +108,8 @@ func (r *pgAccountRepo) FindByNameAndType(ctx context.Context, userID, name stri
 	return accounts[0], nil
 }
 
-func (r *pgAccountRepo) Delete(ctx context.Context, id accounting.AccountID) error {
-	_, err := r.db.Exec(ctx, `DELETE FROM accounts WHERE id = $1`, id)
+func (r *pgAccountRepo) Delete(ctx context.Context, id accounting.AccountID, userID string) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM accounts WHERE id = $1 AND user_id = $2`, id, userID)
 	return err
 }
 

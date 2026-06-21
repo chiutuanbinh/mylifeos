@@ -57,9 +57,12 @@ func (r *testAccountRepo) FindByUser(_ context.Context, _ string) ([]*accounting
 	return result, nil
 }
 
-func (r *testAccountRepo) FindByID(_ context.Context, id accounting.AccountID) (*accounting.Account, error) {
+func (r *testAccountRepo) FindByID(_ context.Context, id accounting.AccountID, userID string) (*accounting.Account, error) {
 	a, ok := r.accounts[id]
 	if !ok {
+		return nil, repository.ErrAccountNotFound
+	}
+	if a.UserID() != userID {
 		return nil, repository.ErrAccountNotFound
 	}
 	return a, nil
@@ -74,7 +77,7 @@ func (r *testAccountRepo) FindByNameAndType(_ context.Context, userID, name stri
 	return nil, repository.ErrAccountNotFound
 }
 
-func (r *testAccountRepo) Delete(_ context.Context, id accounting.AccountID) error {
+func (r *testAccountRepo) Delete(_ context.Context, id accounting.AccountID, userID string) error {
 	delete(r.accounts, id)
 	return nil
 }

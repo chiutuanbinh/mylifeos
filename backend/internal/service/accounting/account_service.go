@@ -20,7 +20,7 @@ func NewAccountService(accounts repository.AccountRepo, journal repository.Journ
 
 func (s *AccountService) OpenAccount(ctx context.Context, cmd OpenAccountCmd) (accounting.AccountID, error) {
 	if cmd.ParentID != nil {
-		parent, err := s.accounts.FindByID(ctx, accounting.AccountID(*cmd.ParentID))
+		parent, err := s.accounts.FindByID(ctx, accounting.AccountID(*cmd.ParentID), cmd.UserID)
 		if err != nil {
 			return "", err
 		}
@@ -62,7 +62,7 @@ func (s *AccountService) OpenAccount(ctx context.Context, cmd OpenAccountCmd) (a
 }
 
 func (s *AccountService) UpdateAccount(ctx context.Context, cmd UpdateAccountCmd) error {
-	a, err := s.accounts.FindByID(ctx, accounting.AccountID(cmd.ID))
+	a, err := s.accounts.FindByID(ctx, accounting.AccountID(cmd.ID), cmd.UserID)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (s *AccountService) UpdateAccount(ctx context.Context, cmd UpdateAccountCmd
 		return errors.New("account not found")
 	}
 	if cmd.ParentID != nil {
-		parent, err := s.accounts.FindByID(ctx, accounting.AccountID(*cmd.ParentID))
+		parent, err := s.accounts.FindByID(ctx, accounting.AccountID(*cmd.ParentID), cmd.UserID)
 		if err != nil {
 			return errors.New("parent account not found")
 		}
@@ -113,7 +113,7 @@ var (
 func (s *AccountService) DeleteAccount(ctx context.Context, userID, id string) error {
 	acctID := accounting.AccountID(id)
 	// verify ownership
-	acct, err := s.accounts.FindByID(ctx, acctID)
+	acct, err := s.accounts.FindByID(ctx, acctID, userID)
 	if err != nil {
 		return err
 	}
@@ -142,5 +142,5 @@ func (s *AccountService) DeleteAccount(ctx context.Context, userID, id string) e
 			}
 		}
 	}
-	return s.accounts.Delete(ctx, acctID)
+	return s.accounts.Delete(ctx, acctID, userID)
 }
