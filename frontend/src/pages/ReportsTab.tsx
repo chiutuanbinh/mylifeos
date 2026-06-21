@@ -132,6 +132,13 @@ function computeBalances(
 const fmtVND = (n: number) =>
   n === 0 ? '—' : `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
 
+function AmtCell({ v, strong }: { v: number; strong?: boolean }) {
+  const neg = v < 0
+  const style = neg ? { color: '#ff4d4f' } : undefined
+  const text = neg ? `-${fmtVND(v)}` : fmtVND(v)
+  return strong ? <Text strong style={style}>{text}</Text> : <Text style={style}>{text}</Text>
+}
+
 // ── Trial Balance ─────────────────────────────────────────────────────────
 
 function TrialBalance({ balances, accounts }: { balances: Map<string, AccountBalance>; accounts: Account[] }) {
@@ -200,9 +207,7 @@ function BalanceSection({ title, type, balances, accounts }: {
     },
     {
       title: 'Balance', dataIndex: 'balance', width: 180, align: 'right' as const,
-      render: (v: number, row: AccountBalance) => (
-        <Text strong={row.isGroup}>{fmtVND(v)}</Text>
-      ),
+      render: (v: number, row: AccountBalance) => <AmtCell v={v} strong={row.isGroup} />,
     },
   ]
 
@@ -217,7 +222,7 @@ function BalanceSection({ title, type, balances, accounts }: {
       summary={() => (
         <Table.Summary.Row>
           <Table.Summary.Cell index={0}><Text strong>Total {title}</Text></Table.Summary.Cell>
-          <Table.Summary.Cell index={1} align="right"><Text strong>{fmtVND(total)}</Text></Table.Summary.Cell>
+          <Table.Summary.Cell index={1} align="right"><AmtCell v={total} strong /></Table.Summary.Cell>
         </Table.Summary.Row>
       )}
     />
@@ -265,7 +270,7 @@ function PnLSection({ title, type, balances, accounts }: {
     },
     {
       title: 'Amount', dataIndex: 'balance', width: 180, align: 'right' as const,
-      render: (v: number, row: AccountBalance) => <Text strong={row.isGroup}>{fmtVND(v)}</Text>,
+      render: (v: number, row: AccountBalance) => <AmtCell v={v} strong={row.isGroup} />,
     },
   ]
 
@@ -280,7 +285,7 @@ function PnLSection({ title, type, balances, accounts }: {
       summary={() => (
         <Table.Summary.Row>
           <Table.Summary.Cell index={0}><Text strong>Total {title}</Text></Table.Summary.Cell>
-          <Table.Summary.Cell index={1} align="right"><Text strong>{fmtVND(total)}</Text></Table.Summary.Cell>
+          <Table.Summary.Cell index={1} align="right"><AmtCell v={total} strong /></Table.Summary.Cell>
         </Table.Summary.Row>
       )}
     />
