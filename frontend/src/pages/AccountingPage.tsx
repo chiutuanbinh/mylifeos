@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Tabs, Card, Table, Tag, Button, Form, Input, Select, Switch,
-  InputNumber, Modal, Spin, Badge, Checkbox, Radio,
+  InputNumber, Modal, Spin, Badge, Checkbox, Radio, Collapse,
 } from 'antd'
-import { PlusOutlined, FolderOutlined, FileOutlined } from '@ant-design/icons'
+import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { getAccounts, createAccount, createJournalEntry, getJournalEntries, getJournalNetWorth } from '../api/endpoints'
-import type { Account, CreateAccountRequest, CreateJournalEntryRequest, JournalEntry } from '../api/types'
+import { getAccounts, createAccount, updateAccount, createJournalEntry, getJournalEntries, getJournalNetWorth } from '../api/endpoints'
+import type { Account, CreateAccountRequest, UpdateAccountRequest, CreateJournalEntryRequest, JournalEntry } from '../api/types'
 
 function normalSide(type: Account['type']): 'debit' | 'credit' {
   return type === 'asset' || type === 'expense' ? 'debit' : 'credit'
@@ -147,6 +147,36 @@ function AccountsTab() {
     },
   })
 
+  const [editOpen, setEditOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<Account | null>(null)
+  const [editForm] = Form.useForm()
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateAccountRequest }) => updateAccount(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['accounts'] })
+      setEditOpen(false)
+      setEditTarget(null)
+      editForm.resetFields()
+    },
+  })
+
+  const openEdit = (account: Account) => {
+    setEditTarget(account)
+    editForm.setFieldsValue({
+      name: account.name,
+      type: account.type,
+      parent_id: account.parent_id,
+      sort_order: account.sort_order,
+      is_group: account.is_group,
+      asset_meta_purchase_value: account.asset_meta?.purchase_value ? parseFloat(account.asset_meta.purchase_value) : undefined,
+      asset_meta_purchased_at: account.asset_meta?.purchased_at ?? undefined,
+      asset_meta_depreciation_rate: account.asset_meta?.depreciation_rate ? parseFloat(account.asset_meta.depreciation_rate) : undefined,
+      asset_meta_notes: account.asset_meta?.notes ?? '',
+    })
+    setEditOpen(true)
+  }
+
   const groupAccounts = accounts.filter(a => a.is_group)
   const treeData = buildTree(accounts)
   const defaultExpandedKeys = accounts.filter(a => a.is_group).map(a => a.id)
@@ -175,6 +205,18 @@ function AccountsTab() {
         <span style={{ fontWeight: row.is_group ? 600 : 400 }}>
           {fmtVND(String(bal))}
         </span>
+      ),
+    },
+    {
+      title: '',
+      width: 48,
+      render: (_: unknown, row: AccountTreeNode) => (
+        <Button
+          type="text"
+          size="small"
+          icon={<EditOutlined />}
+          onClick={() => openEdit(row)}
+        />
       ),
     },
   ]
@@ -216,7 +258,18 @@ function AccountsTab() {
           form={form}
           layout="vertical"
           initialValues={{ type: 'asset', currency: 'VND', is_group: false, sort_order: 0 }}
-          onFinish={(values: CreateAccountRequest) => createMutation.mutate(values)}
+          onFinish={(values) => {
+            const req: CreateAccountRequest & { opening_balance?: number } = {
+              name: values.name,
+              type: values.type,
+              currency: values.currency ?? 'VND',
+              is_group: values.is_group ?? false,
+              sort_order: values.sort_order ?? 0,
+              parent_id: values.parent_id ?? null,
+              opening_balance: values.opening_balance ?? undefined,
+            }
+            createMutation.mutate(req as CreateAccountRequest)
+          }}
         >
           <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Required' }]}>
             <Input />
@@ -240,9 +293,117 @@ function AccountsTab() {
           <Form.Item name="sort_order" label="Sort Order">
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.is_group !== cur.is_group}>
+            {({ getFieldValue }) =>
+              !getFieldValue('is_group') && (
+                <Form.Item name="opening_balance" label="Opening Balance (VND)">
+                  <InputNumber min={0} style={{ width: '100%' }} placeholder="0 — leave empty to skip" />
+                </Form.Item>
+              )
+            }
+          </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type || prev.is_group !== cur.is_group}>
+            {({ getFieldValue }) =>
+              getFieldValue('type') === 'asset' && !getFieldValue('is_group') && (
+                <Collapse ghost size="small" style={{ marginBottom: 8 }}>
+                  <Collapse.Panel header="Asset Details (optional)" key="asset">
+                    <Form.Item name="asset_meta_purchase_value" label="Purchase Value (VND)">
+                      <InputNumber min={0} style={{ width: '100%' }} />
+                    </Form.Item>
+                    <Form.Item name="asset_meta_purchased_at" label="Purchase Date">
+                      <Input type="date" />
+                    </Form.Item>
+                    <Form.Item name="asset_meta_depreciation_rate" label="Annual Depreciation Rate (0–1)">
+                      <InputNumber min={0} max={1} step={0.01} style={{ width: '100%' }} placeholder="e.g. 0.15 for 15%" />
+                    </Form.Item>
+                    <Form.Item name="asset_meta_notes" label="Notes">
+                      <Input />
+                    </Form.Item>
+                  </Collapse.Panel>
+                </Collapse>
+              )
+            }
+          </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={createMutation.isPending} block>
               Save
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Edit Account"
+        open={editOpen}
+        onCancel={() => { setEditOpen(false); setEditTarget(null); editForm.resetFields() }}
+        footer={null}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={(values) => {
+            if (!editTarget) return
+            const assetMeta = (values.type === 'asset' && !editTarget.is_group && (
+              values.asset_meta_purchase_value || values.asset_meta_purchased_at || values.asset_meta_depreciation_rate
+            )) ? {
+              purchase_value: values.asset_meta_purchase_value ?? null,
+              purchased_at: values.asset_meta_purchased_at ?? null,
+              depreciation_rate: values.asset_meta_depreciation_rate ?? null,
+              notes: values.asset_meta_notes ?? '',
+            } : null
+            editMutation.mutate({
+              id: editTarget.id,
+              data: {
+                name: values.name,
+                type: values.type,
+                parent_id: values.parent_id ?? null,
+                sort_order: values.sort_order ?? 0,
+                asset_meta: assetMeta,
+              },
+            })
+          }}
+        >
+          <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Required' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="type" label="Type" rules={[{ required: true }]}>
+            <Select options={['asset','liability','equity','income','expense'].map(t => ({ value: t, label: t }))} />
+          </Form.Item>
+          <Form.Item name="parent_id" label="Parent Group">
+            <Select
+              allowClear
+              placeholder="None (root)"
+              options={groupAccounts.filter(a => a.id !== editTarget?.id).map(a => ({ value: a.id, label: a.name }))}
+            />
+          </Form.Item>
+          <Form.Item name="sort_order" label="Sort Order">
+            <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
+            {({ getFieldValue }) =>
+              getFieldValue('type') === 'asset' && editTarget && !editTarget.is_group && (
+                <Collapse ghost size="small" style={{ marginBottom: 8 }}>
+                  <Collapse.Panel header="Asset Details (optional)" key="asset">
+                    <Form.Item name="asset_meta_purchase_value" label="Purchase Value (VND)">
+                      <InputNumber min={0} style={{ width: '100%' }} />
+                    </Form.Item>
+                    <Form.Item name="asset_meta_purchased_at" label="Purchase Date">
+                      <Input type="date" />
+                    </Form.Item>
+                    <Form.Item name="asset_meta_depreciation_rate" label="Annual Depreciation Rate (0–1)">
+                      <InputNumber min={0} max={1} step={0.01} style={{ width: '100%' }} />
+                    </Form.Item>
+                    <Form.Item name="asset_meta_notes" label="Notes">
+                      <Input />
+                    </Form.Item>
+                  </Collapse.Panel>
+                </Collapse>
+              )
+            }
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={editMutation.isPending} block>
+              Save Changes
             </Button>
           </Form.Item>
         </Form>
