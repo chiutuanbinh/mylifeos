@@ -215,11 +215,14 @@ function AccountsTab() {
     { title: 'Currency', dataIndex: 'currency', width: 90 },
     {
       title: 'Balance', dataIndex: 'balance', width: 160, align: 'right',
-      render: (bal: number, row) => (
-        <span style={{ fontWeight: row.is_group ? 600 : 400 }}>
-          {fmtVND(String(bal))}
-        </span>
-      ),
+      render: (bal: number, row) => {
+        const neg = bal < 0
+        return (
+          <span style={{ fontWeight: row.is_group ? 600 : 400, color: neg ? '#ff4d4f' : undefined }}>
+            {neg ? '-' : ''}{fmtVND(String(bal))}
+          </span>
+        )
+      },
     },
     {
       title: '',
@@ -706,7 +709,10 @@ function AssetsTab() {
     { title: 'Depr. Rate', dataIndex: ['asset_meta', 'depreciation_rate'], width: 100,
       render: (v: string | null) => v ? `${(parseFloat(v) * 100).toFixed(0)}%/yr` : '—' },
     { title: 'Current Balance', dataIndex: 'balance', width: 160, align: 'right',
-      render: (bal: number) => fmtVND(String(bal)) },
+      render: (bal: number) => {
+        const neg = bal < 0
+        return <span style={{ color: neg ? '#ff4d4f' : undefined }}>{neg ? '-' : ''}{fmtVND(String(bal))}</span>
+      } },
     { title: 'Notes', dataIndex: ['asset_meta', 'notes'],
       render: (v: string) => v || '—' },
   ]
