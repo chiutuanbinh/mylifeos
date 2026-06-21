@@ -5,11 +5,10 @@ import { AppShell } from './components/AppShell'
 import { LoginPage } from './pages/LoginPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { DashboardPage } from './pages/DashboardPage'
-import { WealthPage } from './pages/WealthPage'
+import { FinancePage } from './pages/FinancePage'
 import { ObjectivesPage } from './pages/ObjectivesPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { SettingsPage } from './pages/SettingsPage'
-import { AccountingPage } from './pages/AccountingPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore(s => s.token)
@@ -29,8 +28,9 @@ export default function App() {
                 <Routes>
                   <Route path="/"          element={<DashboardPage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/wealth"    element={<WealthPage />} />
-                  <Route path="/accounting" element={<AccountingPage />} />
+                  <Route path="/finance"   element={<FinancePage />} />
+                  <Route path="/wealth"    element={<Navigate to="/finance" replace />} />
+                  <Route path="/accounting" element={<Navigate to="/finance" replace />} />
                   <Route path="/objectives" element={<ObjectivesPage />} />
                   <Route path="/calendar"  element={<CalendarPage />} />
                   <Route path="/settings"  element={<SettingsPage />} />

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu, Avatar, Badge, Space, Button, Breadcrumb, Typography, Grid } from 'antd'
 import {
-  DashboardOutlined, DollarOutlined, TrophyOutlined,
+  DashboardOutlined, TrophyOutlined,
   CalendarOutlined, SettingOutlined, AccountBookOutlined,
   BellOutlined, MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined,
 } from '@ant-design/icons'
@@ -11,8 +11,7 @@ import { useAuthStore } from '../store/auth'
 const NAV = [
   { key: '/',         icon: <DashboardOutlined />, label: 'Dashboard' },
   { type: 'divider' as const },
-  { key: '/wealth',   icon: <DollarOutlined />,   label: 'Wealth' },
-  { key: '/accounting', icon: <AccountBookOutlined />, label: 'Accounting' },
+  { key: '/finance', icon: <AccountBookOutlined />, label: 'Finance' },
   { key: '/objectives', icon: <TrophyOutlined />, label: 'Objectives' },
   { key: '/calendar', icon: <CalendarOutlined />, label: 'Calendar' },
   { type: 'divider' as const },
@@ -21,8 +20,7 @@ const NAV = [
 
 const BOTTOM_NAV = [
   { key: '/',           icon: <DashboardOutlined />, label: 'Home' },
-  { key: '/wealth',     icon: <DollarOutlined />,   label: 'Wealth' },
-  { key: '/accounting', icon: <AccountBookOutlined />, label: 'Accounting' },
+  { key: '/finance',    icon: <AccountBookOutlined />, label: 'Finance' },
   { key: '/objectives', icon: <TrophyOutlined />,   label: 'Goals' },
   { key: '/calendar',   icon: <CalendarOutlined />, label: 'Calendar' },
   { key: '/settings',   icon: <SettingOutlined />,  label: 'Settings' },
@@ -30,8 +28,7 @@ const BOTTOM_NAV = [
 
 const TITLES: Record<string, string> = {
   '/': 'Dashboard',
-  '/wealth': 'Wealth',
-  '/accounting': 'Accounting',
+  '/finance': 'Finance',
   '/objectives': 'Objectives',
   '/calendar': 'Calendar & Schedule',
   '/settings': 'Settings',

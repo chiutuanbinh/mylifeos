@@ -3,14 +3,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Tabs, Card, Table, Tag, Button, Form, Input, Select, Switch,
   InputNumber, Modal, Spin, Badge, Checkbox, Radio, Collapse, Row, Col,
-  Popconfirm, message, Typography, Divider,
+  Popconfirm, message, Typography, Divider, Progress,
 } from 'antd'
-import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined, DeleteOutlined, QuestionCircleOutlined } from '@ant-design/icons'
+import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined, DeleteOutlined, QuestionCircleOutlined, LineChartOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { getAccounts, createAccount, updateAccount, deleteAccount, createJournalEntry, getJournalEntries, getJournalNetWorth } from '../api/endpoints'
+import {
+  getAccounts, createAccount, updateAccount, deleteAccount,
+  createJournalEntry, getJournalEntries, getJournalNetWorth,
+  getTransactions,
+  getBudgets, upsertBudget,
+  getNetWorthSnapshots, addNetWorthSnapshot,
+  getBenchmarks, getBankRates, getNews, triggerScrape,
+} from '../api/endpoints'
 import { ReportsTab } from './ReportsTab'
 import { useTabParam } from '../hooks/useTabParam'
-import type { Account, CreateAccountRequest, UpdateAccountRequest, CreateJournalEntryRequest, JournalEntry } from '../api/types'
+import type {
+  Account, CreateAccountRequest, UpdateAccountRequest,
+  CreateJournalEntryRequest, JournalEntry,
+  BankRate, NewsItem,
+} from '../api/types'
+import { NetWorthChart } from '../components/NetWorthChart'
+import { LiveNetWorthCard } from './LiveNetWorthCard'
 
 function normalSide(type: Account['type']): 'debit' | 'credit' {
   return type === 'asset' || type === 'expense' ? 'debit' : 'credit'
@@ -21,6 +34,14 @@ const TYPE_COLORS: Record<string, string> = {
 }
 
 const fmtVND = (s: string) => `₫${Math.round(Math.abs(parseFloat(s))).toLocaleString('vi-VN')}`
+
+const CATEGORIES = ['Food', 'Income', 'Entertainment', 'Health', 'Tech', 'Auto', 'Utilities', 'Shopping']
+
+
+const BANK_DISPLAY: Record<string, string> = {
+  vcb: 'Vietcombank', tcb: 'Techcombank', mbbank: 'MB Bank',
+  acb: 'ACB', vpbank: 'VPBank', bidv: 'BIDV', agribank: 'Agribank',
+}
 
 const DEFAULT_GROUPS: CreateAccountRequest[] = [
   { name: 'Assets',      type: 'asset',     currency: 'VND', is_group: true, sort_order: 0, parent_id: null },
@@ -40,6 +61,222 @@ const DEFAULT_LEAVES: LeafDef[] = [
   { name: 'Salary',          type: 'income',    parentGroup: 'Income',      sortOrder: 0 },
   { name: 'Living Expenses', type: 'expense',   parentGroup: 'Expenses',    sortOrder: 0 },
 ]
+
+function BudgetsTab() {
+  const [form] = Form.useForm()
+  const qc = useQueryClient()
+
+  const { data: txs = [] } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() })
+  const { data: budgets = [] } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
+
+  const upsertMutation = useMutation({
+    mutationFn: ({ category, monthly_limit }: { category: string; monthly_limit: number }) =>
+      upsertBudget(category, monthly_limit),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['budgets'] }); form.resetFields() },
+  })
+
+  const fmtVNDLocal = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
+
+  return (
+    <>
+      {budgets.length > 0 && (
+        <Card size="small" title="Budget Progress" style={{ marginBottom: 12 }}>
+          <Row gutter={[12, 8]}>
+            {budgets.map(b => {
+              const spent = txs.filter(t => t.category === b.category && t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
+              const pct = Math.min(Math.round(spent / b.monthly_limit * 100), 100)
+              return (
+                <Col xs={24} sm={8} key={b.id}>
+                  <div style={{ fontSize: 12, marginBottom: 2 }}>{b.category} <span style={{ color: '#999' }}>{fmtVNDLocal(spent)} / {fmtVNDLocal(b.monthly_limit)}</span></div>
+                  <Progress percent={pct} size="small" strokeColor={pct > 90 ? '#ff4d4f' : '#1677ff'} />
+                </Col>
+              )
+            })}
+          </Row>
+        </Card>
+      )}
+      <Card size="small" title="Set Budget Limit">
+        <Form form={form} layout="inline" onFinish={values => upsertMutation.mutate(values)}>
+          <Form.Item name="category" rules={[{ required: true }]}>
+            <Select placeholder="Category" style={{ width: 160 }} options={CATEGORIES.map(c => ({ value: c, label: c }))} />
+          </Form.Item>
+          <Form.Item name="monthly_limit" rules={[{ required: true }]}>
+            <InputNumber placeholder="Monthly limit ₫" min={0} step={1} />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" loading={upsertMutation.isPending}>Save</Button>
+        </Form>
+      </Card>
+    </>
+  )
+}
+
+function TrendsTab() {
+  const [backfillOpen, setBackfillOpen] = useState(false)
+  const [scraping, setScraping] = useState(false)
+  const [form] = Form.useForm()
+  const qc = useQueryClient()
+
+  const fmtVNDLocal = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
+
+  const handleScrape = async () => {
+    setScraping(true)
+    try {
+      await triggerScrape()
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['benchmarks'] })
+        qc.invalidateQueries({ queryKey: ['bank-rates'] })
+        qc.invalidateQueries({ queryKey: ['news'] })
+        setScraping(false)
+      }, 5000)
+    } catch {
+      setScraping(false)
+    }
+  }
+
+  const now = new Date()
+  const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().split('T')[0]
+  const todayStr = now.toISOString().split('T')[0]
+
+  const { data: snapshots = [] } = useQuery({ queryKey: ['net-worth-snapshots'], queryFn: getNetWorthSnapshots })
+  const { data: benchmarks = [] } = useQuery({
+    queryKey: ['benchmarks', yearAgo, todayStr],
+    queryFn: () => getBenchmarks(['vn_index', 'sjc_gold', 'gso_cpi'], yearAgo, todayStr),
+  })
+  const { data: bankRatesRaw } = useQuery({ queryKey: ['bank-rates'], queryFn: getBankRates })
+  const bankRates: BankRate[] = bankRatesRaw ?? []
+  const { data: newsRaw } = useQuery({ queryKey: ['news'], queryFn: getNews })
+  const news: NewsItem[] = newsRaw ?? []
+
+  const addMutation = useMutation({
+    mutationFn: addNetWorthSnapshot,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['net-worth-snapshots'] }); setBackfillOpen(false); form.resetFields() },
+  })
+
+  const latest = snapshots[snapshots.length - 1]
+  const thirtyDaysAgo = new Date(now)
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const cutoff30 = thirtyDaysAgo.toISOString().split('T')[0]
+  const snap30 = snapshots.filter(s => s.snapshot_date <= cutoff30).slice(-1)[0]
+
+  const pctChange = (curr: number, prev?: number) =>
+    prev && prev !== 0 ? ((curr - prev) / prev * 100).toFixed(1) : null
+
+  const latestBenchmark = (source: string) => {
+    const pts = benchmarks.filter(b => b.source === source).sort((a, b) => a.date.localeCompare(b.date))
+    return { latest: pts[pts.length - 1], oldest: pts[0] }
+  }
+
+  const vnidx = latestBenchmark('vn_index')
+  const gold = latestBenchmark('sjc_gold')
+
+  return (
+    <div>
+      <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={8}><LiveNetWorthCard /></Col>
+        <Col xs={12} sm={6}>
+          <Card size="small">
+            <div style={{ fontSize: 11, color: '#999' }}>Net Worth (30d)</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#1677ff' }}>
+              {latest ? fmtVNDLocal(latest.net_worth) : '—'}
+            </div>
+            {snap30 && latest && (
+              <div style={{ fontSize: 11, color: Number(pctChange(latest.net_worth, snap30.net_worth)) >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                {pctChange(latest.net_worth, snap30.net_worth)}% vs 30d ago
+              </div>
+            )}
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card size="small">
+            <div style={{ fontSize: 11, color: '#999' }}>VN-Index (1Y)</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>{vnidx.latest ? vnidx.latest.value.toFixed(0) : '—'}</div>
+            {vnidx.oldest && vnidx.latest && (
+              <div style={{ fontSize: 11, color: Number(pctChange(vnidx.latest.value, vnidx.oldest.value)) >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                {pctChange(vnidx.latest.value, vnidx.oldest.value)}% vs 1Y ago
+              </div>
+            )}
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card size="small">
+            <div style={{ fontSize: 11, color: '#999' }}>SJC Gold (1Y)</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>{gold.latest ? `${(gold.latest.value / 1e6).toFixed(1)}M/lượng` : '—'}</div>
+            {gold.oldest && gold.latest && (
+              <div style={{ fontSize: 11, color: Number(pctChange(gold.latest.value, gold.oldest.value)) >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                {pctChange(gold.latest.value, gold.oldest.value)}% vs 1Y ago
+              </div>
+            )}
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card size="small" style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', justifyContent: 'center' }}>
+            <Button size="small" icon={<PlusOutlined />} onClick={() => setBackfillOpen(true)}>Add past data point</Button>
+            <Button size="small" loading={scraping} onClick={handleScrape}>Refresh market data</Button>
+          </Card>
+        </Col>
+      </Row>
+
+      <Card size="small" title="Net Worth Trend vs Benchmarks (% change from start)" style={{ marginBottom: 16 }}>
+        <NetWorthChart snapshots={snapshots} benchmarks={benchmarks} />
+      </Card>
+
+      <Card size="small" title="Bank Interest Rates" style={{ marginBottom: 16 }}>
+        {bankRates.length === 0 ? (
+          <div style={{ color: '#bbb', fontSize: 12 }}>Rates fetched daily. Check back tomorrow.</div>
+        ) : (
+          <>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                  <th style={{ padding: '6px 8px', textAlign: 'left', color: '#999', fontWeight: 500 }}>Bank</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'right', color: '#999', fontWeight: 500 }}>Saving 12m</th>
+                  <th style={{ padding: '6px 8px', textAlign: 'right', color: '#999', fontWeight: 500 }}>Lending</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bankRates.map((r: BankRate) => (
+                  <tr key={r.bank} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                    <td style={{ padding: '6px 8px' }}>{BANK_DISPLAY[r.bank] ?? r.bank}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#52c41a' }}>{r.saving_12m}%</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#ff4d4f' }}>{r.lending}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {bankRates[0] && <div style={{ fontSize: 11, color: '#bbb', marginTop: 6 }}>Updated: {bankRates[0].fetched_date}</div>}
+          </>
+        )}
+      </Card>
+
+      <Card size="small" title="Finance News (vneconomy.vn)">
+        {news.length === 0 ? (
+          <div style={{ color: '#bbb', fontSize: 12 }}>News fetched daily.</div>
+        ) : (
+          news.slice(0, 10).map((n: NewsItem) => (
+            <div key={n.id} style={{ padding: '8px 0', borderBottom: '1px solid #f5f5f5' }}>
+              <a href={n.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#1677ff', textDecoration: 'none' }}>{n.title}</a>
+              <div style={{ fontSize: 11, color: '#bbb', marginTop: 2 }}>
+                {new Date(n.published_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          ))
+        )}
+      </Card>
+
+      <Modal title="Add Past Net Worth" open={backfillOpen} onCancel={() => setBackfillOpen(false)} footer={null}>
+        <Form form={form} layout="vertical"
+          onFinish={values => addMutation.mutate({ date: values.date, net_worth: values.net_worth, note: values.note })}>
+          <Form.Item name="date" label="Date" rules={[{ required: true }]}><Input type="date" /></Form.Item>
+          <Form.Item name="net_worth" label="Net Worth (₫)" rules={[{ required: true }]}>
+            <InputNumber style={{ width: '100%' }} min={0} step={1000000} />
+          </Form.Item>
+          <Form.Item name="note" label="Note (optional)"><Input /></Form.Item>
+          <Button type="primary" htmlType="submit" loading={addMutation.isPending} block>Save</Button>
+        </Form>
+      </Modal>
+    </div>
+  )
+}
 
 function SetupWizard({ open, onDone }: { open: boolean; onDone: () => void }) {
   const [selected, setSelected] = useState<string[]>(DEFAULT_LEAVES.map(l => l.name))
@@ -692,61 +929,17 @@ function JournalTab() {
   )
 }
 
-function AssetsTab() {
-  const { data: accounts = [], isLoading } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: getAccounts,
-  })
-
-  const assetAccounts = accounts.filter(a => a.asset_meta !== null && !a.is_group)
-
-  const columns: ColumnsType<Account> = [
-    {
-      title: 'Name', dataIndex: 'name',
-      render: (name) => <span><FileOutlined style={{ marginRight: 6, color: '#8c8c8c' }} />{name}</span>,
-    },
-    { title: 'Purchase Value', dataIndex: ['asset_meta', 'purchase_value'], width: 160, align: 'right',
-      render: (v: string | null) => v ? fmtVND(v) : '—' },
-    { title: 'Purchased', dataIndex: ['asset_meta', 'purchased_at'], width: 110,
-      render: (v: string | null) => v ?? '—' },
-    { title: 'Depr. Rate', dataIndex: ['asset_meta', 'depreciation_rate'], width: 100,
-      render: (v: string | null) => v ? `${(parseFloat(v) * 100).toFixed(0)}%/yr` : '—' },
-    { title: 'Current Balance', dataIndex: 'balance', width: 160, align: 'right',
-      render: (bal: number) => {
-        const neg = bal < 0
-        return <span style={{ color: neg ? '#ff4d4f' : undefined }}>{neg ? '-' : ''}{fmtVND(String(bal))}</span>
-      } },
-    { title: 'Notes', dataIndex: ['asset_meta', 'notes'],
-      render: (v: string) => v || '—' },
-  ]
-
-  return (
-    <Card size="small" title="Physical Assets">
-      {isLoading ? <Spin /> : (
-        <Table<Account>
-          dataSource={assetAccounts}
-          columns={columns}
-          size="small"
-          rowKey="id"
-          pagination={false}
-          scroll={{ x: true }}
-          locale={{ emptyText: 'No physical assets tracked. Add an account with type "asset" and fill in Asset Details.' }}
-        />
-      )}
-    </Card>
-  )
-}
-
-export function AccountingPage() {
+export function FinancePage() {
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
   const { data: entries = [] } = useQuery({ queryKey: ['journal-entries'], queryFn: getJournalEntries })
-  const [activeTab, setActiveTab] = useTabParam('journal', ['journal', 'accounts', 'assets', 'reports'])
+  const { data: transactions = [] } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() })
+  const [activeTab, setActiveTab] = useTabParam('journal', ['journal', 'accounts', 'budgets', 'reports', 'trends'])
   const [helpOpen, setHelpOpen] = useState(false)
 
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>Accounting</Typography.Title>
+        <Typography.Title level={4} style={{ margin: 0 }}>Finance</Typography.Title>
         <Button
           type="text"
           icon={<QuestionCircleOutlined />}
@@ -818,10 +1011,11 @@ export function AccountingPage() {
         activeKey={activeTab}
         onChange={setActiveTab}
         items={[
-          { key: 'journal', label: 'Journal', children: <JournalTab /> },
+          { key: 'journal',  label: 'Journal',  children: <JournalTab /> },
           { key: 'accounts', label: 'Accounts', children: <AccountsTab /> },
-          { key: 'assets', label: 'Assets', children: <AssetsTab /> },
-          { key: 'reports', label: 'Reports', children: <ReportsTab accounts={accounts} entries={entries} /> },
+          { key: 'budgets',  label: 'Budgets',  children: <BudgetsTab /> },
+          { key: 'reports',  label: 'Reports',  children: <ReportsTab accounts={accounts} entries={entries} transactions={transactions} /> },
+          { key: 'trends',   label: <><LineChartOutlined /> Trends</>, children: <TrendsTab /> },
         ]}
       />
     </>

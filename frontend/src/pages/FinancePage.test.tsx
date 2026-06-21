@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import { AccountingPage } from './AccountingPage'
+import { FinancePage } from './FinancePage'
 import * as endpoints from '../api/endpoints'
 import type { Account } from '../api/types'
 
@@ -29,16 +29,22 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetJournalEntries.mockResolvedValue([])
   mockGetJournalNetWorth.mockResolvedValue({ net_worth: '0', currency: 'VND', net_income_ytd: '0' })
+  vi.mocked(endpoints.getTransactions).mockResolvedValue([])
+  vi.mocked(endpoints.getBudgets).mockResolvedValue([])
+  vi.mocked(endpoints.getNetWorthSnapshots).mockResolvedValue([])
+  vi.mocked(endpoints.getBankRates).mockResolvedValue([])
+  vi.mocked(endpoints.getNews).mockResolvedValue([])
+  vi.mocked(endpoints.getBenchmarks).mockResolvedValue([])
 })
 
 async function switchToAccountsTab() {
   fireEvent.click(screen.getByRole('tab', { name: /accounts/i }))
 }
 
-describe('AccountingPage — Accounts tab', () => {
+describe('FinancePage — Accounts tab', () => {
   it('renders account list', async () => {
     mockGetAccounts.mockResolvedValue(sampleAccounts)
-    wrap(<AccountingPage />)
+    wrap(<FinancePage />)
     await switchToAccountsTab()
     await waitFor(() => expect(screen.getByText('Cash')).toBeInTheDocument())
     expect(screen.getAllByText('asset').length).toBeGreaterThan(0)
@@ -46,7 +52,7 @@ describe('AccountingPage — Accounts tab', () => {
 
   it('opens create modal on Add button click', async () => {
     mockGetAccounts.mockResolvedValue([])
-    wrap(<AccountingPage />)
+    wrap(<FinancePage />)
     await switchToAccountsTab()
     await waitFor(() => screen.getByRole('button', { name: /add account/i }))
     fireEvent.click(screen.getByRole('button', { name: /add account/i }))
@@ -56,7 +62,7 @@ describe('AccountingPage — Accounts tab', () => {
   it('calls createAccount on form submit', async () => {
     mockGetAccounts.mockResolvedValue([])
     mockCreateAccount.mockResolvedValueOnce({ id: 'a3' })
-    wrap(<AccountingPage />)
+    wrap(<FinancePage />)
     await switchToAccountsTab()
     await waitFor(() => screen.getByRole('button', { name: /add account/i }))
     fireEvent.click(screen.getByRole('button', { name: /add account/i }))
@@ -68,10 +74,10 @@ describe('AccountingPage — Accounts tab', () => {
   })
 })
 
-describe('AccountingPage — SetupWizard', () => {
+describe('FinancePage — SetupWizard', () => {
   it('shows setup wizard when accounts list is empty', async () => {
     mockGetAccounts.mockResolvedValue([])
-    wrap(<AccountingPage />)
+    wrap(<FinancePage />)
     await switchToAccountsTab()
     await waitFor(() =>
       expect(screen.getByText(/set up your accounts/i)).toBeInTheDocument()
@@ -80,7 +86,7 @@ describe('AccountingPage — SetupWizard', () => {
 
   it('does not show wizard when accounts exist', async () => {
     mockGetAccounts.mockResolvedValue(sampleAccounts)
-    wrap(<AccountingPage />)
+    wrap(<FinancePage />)
     await switchToAccountsTab()
     await waitFor(() => screen.getByText('Cash'))
     expect(screen.queryByText(/set up your accounts/i)).not.toBeInTheDocument()
@@ -88,7 +94,7 @@ describe('AccountingPage — SetupWizard', () => {
 
   it('dismisses wizard on Skip', async () => {
     mockGetAccounts.mockResolvedValue([])
-    wrap(<AccountingPage />)
+    wrap(<FinancePage />)
     await switchToAccountsTab()
     await waitFor(() => screen.getByText(/set up your accounts/i))
     fireEvent.click(screen.getByRole('button', { name: /skip/i }))
@@ -99,7 +105,7 @@ describe('AccountingPage — SetupWizard', () => {
 
   it('renders all default leaf accounts as checked checkboxes', async () => {
     mockGetAccounts.mockResolvedValue([])
-    wrap(<AccountingPage />)
+    wrap(<FinancePage />)
     await switchToAccountsTab()
     await waitFor(() => screen.getByText(/set up your accounts/i))
     expect(screen.getByLabelText(/cash/i)).toBeChecked()
@@ -108,5 +114,23 @@ describe('AccountingPage — SetupWizard', () => {
     expect(screen.getByLabelText(/opening balance/i)).toBeChecked()
     expect(screen.getByLabelText(/salary/i)).toBeChecked()
     expect(screen.getByLabelText(/living expenses/i)).toBeChecked()
+  })
+})
+
+describe('FinancePage — Budgets tab', () => {
+  beforeEach(() => {
+    vi.mocked(endpoints.getTransactions).mockResolvedValue([])
+    vi.mocked(endpoints.getBudgets).mockResolvedValue([])
+    mockGetAccounts.mockResolvedValue([])
+    mockGetJournalEntries.mockResolvedValue([])
+    mockGetJournalNetWorth.mockResolvedValue({ net_worth: '0', currency: 'VND', net_income_ytd: '0' })
+  })
+
+  it('renders Budgets tab without crashing', async () => {
+    // mock all endpoints used by FinancePage
+    vi.mocked(endpoints.getTransactions).mockResolvedValue([])
+    wrap(<FinancePage />)
+    fireEvent.click(screen.getByRole('tab', { name: /budgets/i }))
+    expect(await screen.findByText('Set Budget Limit')).toBeTruthy()
   })
 })
