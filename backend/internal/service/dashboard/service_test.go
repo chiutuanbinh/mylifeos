@@ -65,6 +65,7 @@ func (s *stubTxRepo) ListBudgets(_ context.Context, _ string) ([]finance.Budget,
 func (s *stubTxRepo) UpsertBudget(_ context.Context, b finance.Budget) (finance.Budget, error) {
 	return b, nil
 }
+func (s *stubTxRepo) DeleteBudget(_ context.Context, _, _ string) error { return nil }
 func (s *stubTxRepo) SumByUser(_ context.Context, _ string) (float64, error) {
 	return s.cash, nil
 }
