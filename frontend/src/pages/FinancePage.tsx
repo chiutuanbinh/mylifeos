@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Tabs, Card, Table, Tag, Button, Form, Input, Select, Switch,
   InputNumber, Modal, Spin, Badge, Checkbox, Radio, Collapse, Row, Col,
-  Popconfirm, message, Typography, Divider, Progress,
+  Popconfirm, message, Typography, Divider, Progress, Space,
 } from 'antd'
 import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined, DeleteOutlined, QuestionCircleOutlined, LineChartOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
@@ -11,7 +11,7 @@ import {
   getAccounts, createAccount, updateAccount, deleteAccount,
   createJournalEntry, getJournalEntries, getJournalNetWorth,
   getTransactions,
-  getBudgets, upsertBudget,
+  getBudgets, upsertBudget, deleteBudget,
   getNetWorthSnapshots, addNetWorthSnapshot,
   getBenchmarks, getBankRates, getNews, triggerScrape,
 } from '../api/endpoints'
@@ -20,7 +20,7 @@ import { useTabParam } from '../hooks/useTabParam'
 import type {
   Account, CreateAccountRequest, UpdateAccountRequest,
   CreateJournalEntryRequest, JournalEntry,
-  BankRate, NewsItem,
+  BankRate, NewsItem, Budget,
 } from '../api/types'
 import { NetWorthChart } from '../components/NetWorthChart'
 import { LiveNetWorthCard } from './LiveNetWorthCard'
@@ -63,19 +63,43 @@ const DEFAULT_LEAVES: LeafDef[] = [
 ]
 
 function BudgetsTab() {
-  const [form] = Form.useForm()
+  const [editBudget, setEditBudget] = useState<Budget | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
+  const [editForm] = Form.useForm()
+  const [addForm] = Form.useForm()
   const qc = useQueryClient()
 
   const { data: txs = [] } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() })
   const { data: budgets = [] } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
 
+  const fmtVNDLocal = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
+
   const upsertMutation = useMutation({
     mutationFn: ({ category, monthly_limit }: { category: string; monthly_limit: number }) =>
       upsertBudget(category, monthly_limit),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['budgets'] }); form.resetFields() },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['budgets'] })
+      setEditBudget(null)
+      setAddOpen(false)
+      editForm.resetFields()
+      addForm.resetFields()
+    },
   })
 
-  const fmtVNDLocal = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
+  const deleteMutation = useMutation({
+    mutationFn: (category: string) => deleteBudget(category),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['budgets'] }),
+  })
+
+  const openEdit = (b: Budget) => {
+    setEditBudget(b)
+    editForm.setFieldsValue({ monthly_limit: b.monthly_limit })
+  }
+
+  const openAdd = () => {
+    setAddOpen(true)
+    addForm.resetFields()
+  }
 
   return (
     <>
@@ -95,17 +119,74 @@ function BudgetsTab() {
           </Row>
         </Card>
       )}
-      <Card size="small" title="Set Budget Limit">
-        <Form form={form} layout="inline" onFinish={values => upsertMutation.mutate(values)}>
-          <Form.Item name="category" rules={[{ required: true }]}>
-            <Select placeholder="Category" style={{ width: 160 }} options={CATEGORIES.map(c => ({ value: c, label: c }))} />
-          </Form.Item>
-          <Form.Item name="monthly_limit" rules={[{ required: true }]}>
-            <InputNumber placeholder="Monthly limit ₫" min={0} step={1} />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" loading={upsertMutation.isPending}>Save</Button>
-        </Form>
+
+      <Card
+        size="small"
+        title="Budgets"
+        extra={<Button size="small" type="primary" icon={<PlusOutlined />} onClick={openAdd}>Add Budget</Button>}
+      >
+        <Table<Budget>
+          dataSource={budgets}
+          rowKey="id"
+          size="small"
+          pagination={false}
+          columns={[
+            { title: 'Category', dataIndex: 'category' },
+            { title: 'Monthly Limit', dataIndex: 'monthly_limit', render: (v: number) => fmtVNDLocal(v) },
+            {
+              title: 'Actions',
+              width: 100,
+              render: (_: unknown, b: Budget) => (
+                <Space>
+                  <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(b)} />
+                  <Popconfirm
+                    title={`Delete budget for ${b.category}?`}
+                    onConfirm={() => deleteMutation.mutate(b.category)}
+                    okText="Delete"
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button size="small" danger icon={<DeleteOutlined />} loading={deleteMutation.isPending} />
+                  </Popconfirm>
+                </Space>
+              ),
+            },
+          ]}
+          locale={{ emptyText: 'No budgets yet.' }}
+        />
       </Card>
+
+      {/* Edit modal */}
+      <Modal
+        title={`Edit Budget — ${editBudget?.category}`}
+        open={!!editBudget}
+        onCancel={() => { setEditBudget(null); editForm.resetFields() }}
+        footer={null}
+      >
+        <Form form={editForm} layout="vertical" onFinish={v => upsertMutation.mutate({ category: editBudget!.category, monthly_limit: v.monthly_limit })}>
+          <Form.Item name="monthly_limit" label="Monthly Limit (₫)" rules={[{ required: true }]}>
+            <InputNumber min={0} step={1} style={{ width: '100%' }} />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" loading={upsertMutation.isPending} block>Save</Button>
+        </Form>
+      </Modal>
+
+      {/* Add modal */}
+      <Modal
+        title="Add Budget"
+        open={addOpen}
+        onCancel={() => { setAddOpen(false); addForm.resetFields() }}
+        footer={null}
+      >
+        <Form form={addForm} layout="vertical" onFinish={v => upsertMutation.mutate(v)}>
+          <Form.Item name="category" label="Category" rules={[{ required: true }]}>
+            <Select placeholder="Select category" options={CATEGORIES.map(c => ({ value: c, label: c }))} />
+          </Form.Item>
+          <Form.Item name="monthly_limit" label="Monthly Limit (₫)" rules={[{ required: true }]}>
+            <InputNumber min={0} step={1} style={{ width: '100%' }} />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" loading={upsertMutation.isPending} block>Save</Button>
+        </Form>
+      </Modal>
     </>
   )
 }

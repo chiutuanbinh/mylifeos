@@ -20,6 +20,8 @@ export const getBudgets = () =>
   apiClient.get<Budget[]>('/budgets').then(r => r.data)
 export const upsertBudget = (category: string, monthly_limit: number) =>
   apiClient.put<Budget>(`/budgets/${category}`, { monthly_limit }).then(r => r.data)
+export const deleteBudget = (category: string) =>
+  apiClient.delete(`/budgets/${category}`)
 
 export const getKRLogs = (date?: string) =>
   apiClient.get<KRLog[]>('/kr-logs', { params: { date } }).then(r => r.data)
