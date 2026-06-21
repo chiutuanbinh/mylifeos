@@ -314,8 +314,6 @@ function ProfitAndLoss({ balances, accounts }: { balances: Map<string, AccountBa
 
 // ── Ledger helpers ────────────────────────────────────────────────────────
 
-const fmtLedgerVND = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
-
 const CAT_COLORS: Record<string, string> = {
   Food: 'green', Income: 'blue', Entertainment: 'purple', Health: 'volcano',
   Tech: 'cyan', Auto: 'orange', Utilities: 'gold', Shopping: 'magenta',
@@ -329,7 +327,7 @@ const txColumns: ColumnsType<Transaction> = [
     title: 'Amount', dataIndex: 'amount', align: 'right', width: 150,
     render: (a: number) => (
       <span style={{ color: a > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600, whiteSpace: 'nowrap' }}>
-        {a > 0 ? '+' : '-'}{fmtLedgerVND(a)}
+        {a > 0 ? '+' : '-'}{fmtVND(a)}
       </span>
     ),
   },
@@ -366,9 +364,9 @@ export function ReportsTab({ accounts, entries, transactions }: ReportsTabProps)
     <>
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
         {[
-          { label: 'Income', val: fmtLedgerVND(totalIncome), color: '#52c41a' },
-          { label: 'Expenses', val: fmtLedgerVND(totalExpenses), color: '#ff4d4f' },
-          { label: 'Net Cash', val: (totalIncome - totalExpenses >= 0 ? '' : '-') + fmtLedgerVND(totalIncome - totalExpenses), color: '#1677ff' },
+          { label: 'Income', val: fmtVND(totalIncome), color: '#52c41a' },
+          { label: 'Expenses', val: fmtVND(totalExpenses), color: '#ff4d4f' },
+          { label: 'Net Cash', val: (totalIncome - totalExpenses >= 0 ? '' : '-') + fmtVND(totalIncome - totalExpenses), color: '#1677ff' },
         ].map((s, i) => (
           <Col xs={24} sm={8} key={i}>
             <Card size="small">
