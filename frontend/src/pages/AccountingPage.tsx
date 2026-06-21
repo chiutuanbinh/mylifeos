@@ -8,6 +8,7 @@ import {
 import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { getAccounts, createAccount, updateAccount, deleteAccount, createJournalEntry, getJournalEntries, getJournalNetWorth } from '../api/endpoints'
+import { ReportsTab } from './ReportsTab'
 import type { Account, CreateAccountRequest, UpdateAccountRequest, CreateJournalEntryRequest, JournalEntry } from '../api/types'
 
 function normalSide(type: Account['type']): 'debit' | 'credit' {
@@ -728,6 +729,9 @@ function AssetsTab() {
 }
 
 export function AccountingPage() {
+  const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
+  const { data: entries = [] } = useQuery({ queryKey: ['journal-entries'], queryFn: getJournalEntries })
+
   return (
     <Tabs
       defaultActiveKey="journal"
@@ -735,6 +739,7 @@ export function AccountingPage() {
         { key: 'journal', label: 'Journal', children: <JournalTab /> },
         { key: 'accounts', label: 'Accounts', children: <AccountsTab /> },
         { key: 'assets', label: 'Assets', children: <AssetsTab /> },
+        { key: 'reports', label: 'Reports', children: <ReportsTab accounts={accounts} entries={entries} /> },
       ]}
     />
   )
