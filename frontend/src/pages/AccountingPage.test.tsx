@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import { AccountingPage } from './AccountingPage'
 import * as endpoints from '../api/endpoints'
 import type { Account } from '../api/types'
@@ -14,7 +15,7 @@ const mockGetJournalNetWorth = vi.mocked(endpoints.getJournalNetWorth)
 
 function wrap(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>)
+  return render(<MemoryRouter><QueryClientProvider client={qc}>{ui}</QueryClientProvider></MemoryRouter>)
 }
 
 const sampleAccounts: Account[] = [
