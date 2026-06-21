@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Tabs, Row, Col, Card, Table, Tag, Button, Form, Input, Select,
-  InputNumber, Modal, Progress, Spin, Tooltip, Drawer,
+  InputNumber, Modal, Progress, Spin, Tooltip, Drawer, Alert,
 } from 'antd'
 import type { FormInstance } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, LineChartOutlined } from '@ant-design/icons'
@@ -214,6 +214,12 @@ function AssetsTab() {
 
   return (
     <>
+      <Alert
+        type="info"
+        showIcon
+        message="Assets are now tracked in Accounting → Assets tab."
+        style={{ marginBottom: 12 }}
+      />
       <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
         <Col xs={12} sm={6}>
           <Card size="small">

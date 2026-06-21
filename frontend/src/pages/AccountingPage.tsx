@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Tabs, Card, Table, Tag, Button, Form, Input, Select, Switch,
-  InputNumber, Modal, Spin, Badge, Checkbox, Radio, Collapse,
+  InputNumber, Modal, Spin, Badge, Checkbox, Radio, Collapse, Row, Col,
 } from 'antd'
 import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
@@ -449,12 +449,27 @@ function JournalTab() {
   return (
     <>
       {nw && (
-        <Card size="small" style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: '#999' }}>Live Net Worth</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#1677ff' }}>
-            {fmtVND(nw.net_worth)}
-          </div>
-        </Card>
+        <Row gutter={12} style={{ marginBottom: 12 }}>
+          <Col xs={24} sm={12}>
+            <Card size="small">
+              <div style={{ fontSize: 12, color: '#999' }}>Live Net Worth</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: '#1677ff' }}>
+                {fmtVND(nw.net_worth)}
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Card size="small">
+              <div style={{ fontSize: 12, color: '#999' }}>Net Income (YTD)</div>
+              <div style={{
+                fontSize: 28, fontWeight: 700,
+                color: parseFloat(nw.net_income_ytd) >= 0 ? '#52c41a' : '#ff4d4f',
+              }}>
+                {parseFloat(nw.net_income_ytd) < 0 ? '-' : ''}{fmtVND(nw.net_income_ytd)}
+              </div>
+            </Card>
+          </Col>
+        </Row>
       )}
       <Card
         size="small"
@@ -637,13 +652,56 @@ function JournalTab() {
   )
 }
 
+function AssetsTab() {
+  const { data: accounts = [], isLoading } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: getAccounts,
+  })
+
+  const assetAccounts = accounts.filter(a => a.asset_meta !== null && !a.is_group)
+
+  const columns: ColumnsType<Account> = [
+    {
+      title: 'Name', dataIndex: 'name',
+      render: (name) => <span><FileOutlined style={{ marginRight: 6, color: '#8c8c8c' }} />{name}</span>,
+    },
+    { title: 'Purchase Value', dataIndex: ['asset_meta', 'purchase_value'], width: 160, align: 'right',
+      render: (v: string | null) => v ? fmtVND(v) : '—' },
+    { title: 'Purchased', dataIndex: ['asset_meta', 'purchased_at'], width: 110,
+      render: (v: string | null) => v ?? '—' },
+    { title: 'Depr. Rate', dataIndex: ['asset_meta', 'depreciation_rate'], width: 100,
+      render: (v: string | null) => v ? `${(parseFloat(v) * 100).toFixed(0)}%/yr` : '—' },
+    { title: 'Current Balance', dataIndex: 'balance', width: 160, align: 'right',
+      render: (bal: number) => fmtVND(String(bal)) },
+    { title: 'Notes', dataIndex: ['asset_meta', 'notes'],
+      render: (v: string) => v || '—' },
+  ]
+
+  return (
+    <Card size="small" title="Physical Assets">
+      {isLoading ? <Spin /> : (
+        <Table<Account>
+          dataSource={assetAccounts}
+          columns={columns}
+          size="small"
+          rowKey="id"
+          pagination={false}
+          scroll={{ x: true }}
+          locale={{ emptyText: 'No physical assets tracked. Add an account with type "asset" and fill in Asset Details.' }}
+        />
+      )}
+    </Card>
+  )
+}
+
 export function AccountingPage() {
   return (
     <Tabs
       defaultActiveKey="journal"
       items={[
-        { key: 'accounts', label: 'Accounts', children: <AccountsTab /> },
         { key: 'journal', label: 'Journal', children: <JournalTab /> },
+        { key: 'accounts', label: 'Accounts', children: <AccountsTab /> },
+        { key: 'assets', label: 'Assets', children: <AssetsTab /> },
       ]}
     />
   )
