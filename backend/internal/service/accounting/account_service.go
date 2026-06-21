@@ -104,3 +104,43 @@ func (s *AccountService) UpdateAccount(ctx context.Context, cmd UpdateAccountCmd
 func (s *AccountService) ListAccounts(ctx context.Context, userID string) ([]*accounting.Account, error) {
 	return s.accounts.FindByUser(ctx, userID)
 }
+
+var (
+	ErrAccountHasChildren     = errors.New("account has child accounts")
+	ErrAccountHasJournalLines = errors.New("account has journal entries")
+)
+
+func (s *AccountService) DeleteAccount(ctx context.Context, userID, id string) error {
+	acctID := accounting.AccountID(id)
+	// verify ownership
+	acct, err := s.accounts.FindByID(ctx, acctID)
+	if err != nil {
+		return err
+	}
+	if acct.UserID() != userID {
+		return repository.ErrAccountNotFound
+	}
+	// check children
+	all, err := s.accounts.FindByUser(ctx, userID)
+	if err != nil {
+		return err
+	}
+	for _, a := range all {
+		if a.ParentID() != nil && *a.ParentID() == acctID {
+			return ErrAccountHasChildren
+		}
+	}
+	// check journal lines
+	entries, err := s.journal.FindByUser(ctx, userID, time.Time{}, time.Now())
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		for _, l := range e.Lines() {
+			if l.AccountID() == acctID {
+				return ErrAccountHasJournalLines
+			}
+		}
+	}
+	return s.accounts.Delete(ctx, acctID)
+}

@@ -3,10 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Tabs, Card, Table, Tag, Button, Form, Input, Select, Switch,
   InputNumber, Modal, Spin, Badge, Checkbox, Radio, Collapse, Row, Col,
+  Popconfirm, message,
 } from 'antd'
-import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined } from '@ant-design/icons'
+import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { getAccounts, createAccount, updateAccount, createJournalEntry, getJournalEntries, getJournalNetWorth } from '../api/endpoints'
+import { getAccounts, createAccount, updateAccount, deleteAccount, createJournalEntry, getJournalEntries, getJournalNetWorth } from '../api/endpoints'
+import { ReportsTab } from './ReportsTab'
 import type { Account, CreateAccountRequest, UpdateAccountRequest, CreateJournalEntryRequest, JournalEntry } from '../api/types'
 
 function normalSide(type: Account['type']): 'debit' | 'credit' {
@@ -161,6 +163,18 @@ function AccountsTab() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteAccount(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['accounts'] })
+      message.success('Account deleted')
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Failed to delete account'
+      message.error(msg)
+    },
+  })
+
   const openEdit = (account: Account) => {
     setEditTarget(account)
     editForm.setFieldsValue({
@@ -217,6 +231,26 @@ function AccountsTab() {
           icon={<EditOutlined />}
           onClick={() => openEdit(row)}
         />
+      ),
+    },
+    {
+      title: '',
+      width: 48,
+      render: (_: unknown, row: AccountTreeNode) => (
+        <Popconfirm
+          title="Delete account?"
+          description="This cannot be undone."
+          onConfirm={() => deleteMutation.mutate(row.id)}
+          okText="Delete"
+          okButtonProps={{ danger: true }}
+        >
+          <Button
+            type="text"
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+          />
+        </Popconfirm>
       ),
     },
   ]
@@ -695,6 +729,9 @@ function AssetsTab() {
 }
 
 export function AccountingPage() {
+  const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
+  const { data: entries = [] } = useQuery({ queryKey: ['journal-entries'], queryFn: getJournalEntries })
+
   return (
     <Tabs
       defaultActiveKey="journal"
@@ -702,6 +739,7 @@ export function AccountingPage() {
         { key: 'journal', label: 'Journal', children: <JournalTab /> },
         { key: 'accounts', label: 'Accounts', children: <AccountsTab /> },
         { key: 'assets', label: 'Assets', children: <AssetsTab /> },
+        { key: 'reports', label: 'Reports', children: <ReportsTab accounts={accounts} entries={entries} /> },
       ]}
     />
   )

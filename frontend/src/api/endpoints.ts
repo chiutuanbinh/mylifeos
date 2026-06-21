@@ -122,6 +122,9 @@ export const createAccount = (data: CreateAccountRequest) =>
 export const updateAccount = (id: string, data: UpdateAccountRequest) =>
   apiClient.patch(`/accounts/${id}`, data)
 
+export const deleteAccount = (id: string) =>
+  apiClient.delete(`/accounts/${id}`)
+
 export const createJournalEntry = (data: CreateJournalEntryRequest) =>
   apiClient.post<{ id: string }>('/journal/entries', data).then(r => r.data)
 
