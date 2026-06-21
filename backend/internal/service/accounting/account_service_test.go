@@ -84,6 +84,8 @@ func (r *memJournalRepo) FindByUser(_ context.Context, userID string, from, to t
 	return res, nil
 }
 
+func (r *memJournalRepo) SaveGoalLinks(_ context.Context, _, _ string, _ []string) error { return nil }
+
 func TestAccountService_OpenAccount_Root(t *testing.T) {
 	repo := newFakeAccountRepo()
 	svc := accountingsvc.NewAccountService(repo, nil)
