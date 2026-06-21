@@ -181,6 +181,7 @@ export interface JournalEntry {
   description: string
   memo: string
   lines: JournalLine[]
+  goal_ids: string[]
 }
 
 export interface CreateAccountRequest {
@@ -216,6 +217,7 @@ export interface CreateJournalEntryRequest {
     currency: string
     side: 'debit' | 'credit'
   }[]
+  goal_ids?: string[]
 }
 
 export interface NetWorthResult {

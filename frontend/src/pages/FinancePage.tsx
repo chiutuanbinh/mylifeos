@@ -10,7 +10,7 @@ import type { ColumnsType } from 'antd/es/table'
 import {
   getAccounts, createAccount, updateAccount, deleteAccount,
   createJournalEntry, getJournalEntries, getJournalNetWorth,
-  getTransactions,
+  getGoals, getTransactions,
   getBudgets, upsertBudget, deleteBudget,
   getNetWorthSnapshots, addNetWorthSnapshot,
   getBenchmarks, getBankRates, getNews, triggerScrape,
@@ -20,7 +20,7 @@ import { useTabParam } from '../hooks/useTabParam'
 import type {
   Account, CreateAccountRequest, UpdateAccountRequest,
   CreateJournalEntryRequest, JournalEntry,
-  BankRate, NewsItem, Budget,
+  BankRate, NewsItem, Budget, Goal,
 } from '../api/types'
 import { NetWorthChart } from '../components/NetWorthChart'
 import { LiveNetWorthCard } from './LiveNetWorthCard'
@@ -778,15 +778,19 @@ function JournalTab() {
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
   const { data: entries = [], isLoading: entriesLoading } = useQuery({ queryKey: ['journal-entries'], queryFn: getJournalEntries })
   const { data: nw } = useQuery({ queryKey: ['journal-networth'], queryFn: getJournalNetWorth })
+  const { data: goals = [] } = useQuery<Goal[]>({ queryKey: ['goals'], queryFn: getGoals })
+  const { data: budgets = [] } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets })
+  const { data: txs = [] } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() })
 
   const leafAccounts = accounts.filter(a => !a.is_group)
 
   const recordMutation = useMutation({
-    mutationFn: (values: { date: string; description: string; memo: string; lines: { account_id: string; amount: number; side: 'debit' | 'credit' }[] }) => {
+    mutationFn: (values: { date: string; description: string; memo: string; goal_ids?: string[]; lines: { account_id: string; amount: number; side: 'debit' | 'credit' }[] }) => {
       const req: CreateJournalEntryRequest = {
         date: values.date,
         description: values.description,
         memo: values.memo ?? '',
+        goal_ids: values.goal_ids ?? [],
         lines: values.lines.map(l => ({
           account_id: l.account_id,
           amount: String(l.amount),
@@ -865,6 +869,26 @@ function JournalTab() {
                     })}
                   </div>
                 ),
+              },
+              {
+                title: 'Goals',
+                dataIndex: 'goal_ids',
+                render: (gids: string[]) => {
+                  if (!gids?.length) return null
+                  return (
+                    <Space wrap size={[4, 4]}>
+                      {gids.map(gid => {
+                        const g = goals.find(x => x.id === gid)
+                        if (!g) return null
+                        return (
+                          <Tag key={gid} style={{ fontSize: 11, borderColor: g.color, color: g.color, background: `${g.color}18` }}>
+                            {g.name}
+                          </Tag>
+                        )
+                      })}
+                    </Space>
+                  )
+                },
               },
             ]}
             locale={{ emptyText: 'No entries yet. Record your first entry above.' }}
@@ -988,6 +1012,54 @@ function JournalTab() {
               )
             }}
           </Form.List>
+
+          <Form.Item name="goal_ids" label="Goals (optional)">
+            <Select
+              mode="multiple"
+              placeholder="Tag with goals"
+              options={goals.map(g => ({
+                value: g.id,
+                label: (
+                  <span>
+                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: g.color, marginRight: 6 }} />
+                    {g.name}
+                  </span>
+                ),
+              }))}
+              filterOption={(input, opt) =>
+                (goals.find(g => g.id === opt?.value)?.name ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            />
+          </Form.Item>
+
+          {budgets.length > 0 && (() => {
+            const now = new Date()
+            const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+            const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`
+            return (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>Budget remaining this month</div>
+                <Space wrap size={[4, 4]}>
+                  {budgets.map((b: { id: string; category: string; monthly_limit: number }) => {
+                    const spent = txs
+                      .filter((t: { date?: string; category: string; amount: number }) => {
+                        const d = t.date?.slice(0, 10) ?? ''
+                        return t.category === b.category && t.amount < 0 && d >= monthStart && d <= monthEnd
+                      })
+                      .reduce((s: number, t: { amount: number }) => s + Math.abs(t.amount), 0)
+                    const remaining = b.monthly_limit - spent
+                    const pct = b.monthly_limit > 0 ? remaining / b.monthly_limit : 1
+                    const color = pct <= 0.2 ? '#ff4d4f' : '#52c41a'
+                    return (
+                      <Tag key={b.id} color={pct <= 0.2 ? 'red' : 'green'} style={{ fontSize: 11 }}>
+                        {b.category}: <b style={{ color }}>{remaining < 0 ? '-' : ''}{fmtVND(String(remaining))}</b>
+                      </Tag>
+                    )
+                  })}
+                </Space>
+              </div>
+            )
+          })()}
 
           <Form.Item style={{ marginTop: 8 }}>
             <Form.Item noStyle shouldUpdate>
