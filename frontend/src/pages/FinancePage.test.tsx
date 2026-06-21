@@ -35,6 +35,7 @@ beforeEach(() => {
   vi.mocked(endpoints.getBankRates).mockResolvedValue([])
   vi.mocked(endpoints.getNews).mockResolvedValue([])
   vi.mocked(endpoints.getBenchmarks).mockResolvedValue([])
+  vi.mocked(endpoints.getGoals).mockResolvedValue([])
 })
 
 async function switchToAccountsTab() {
@@ -131,6 +132,6 @@ describe('FinancePage — Budgets tab', () => {
     vi.mocked(endpoints.getTransactions).mockResolvedValue([])
     wrap(<FinancePage />)
     fireEvent.click(screen.getByRole('tab', { name: /budgets/i }))
-    expect(await screen.findByText('Set Budget Limit')).toBeTruthy()
+    expect(await screen.findByText('No budgets yet.')).toBeTruthy()
   })
 })
