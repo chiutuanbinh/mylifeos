@@ -216,10 +216,12 @@ function AccountsTab() {
     {
       title: 'Balance', dataIndex: 'balance', width: 160, align: 'right',
       render: (bal: number, row) => {
-        const neg = bal < 0
+        const isLiability = row.type === 'liability'
+        const displayNeg = bal < 0 || (isLiability && bal > 0)
+        const color = displayNeg ? '#ff4d4f' : row.type === 'asset' ? '#52c41a' : undefined
         return (
-          <span style={{ fontWeight: row.is_group ? 600 : 400, color: neg ? '#ff4d4f' : undefined }}>
-            {neg ? '-' : ''}{fmtVND(String(bal))}
+          <span style={{ fontWeight: row.is_group ? 600 : 400, color }}>
+            {displayNeg ? '-' : ''}{fmtVND(String(bal))}
           </span>
         )
       },
