@@ -211,6 +211,8 @@ func (h *AccountsHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountsHandler) Update(w http.ResponseWriter, r *http.Request) {
+	// PATCH uses full-replace semantics: all fields including parent_id must be
+	// sent on every request. Omitting parent_id detaches the account from its parent.
 	userID := middleware.GetUserID(r)
 	id := chi.URLParam(r, "id")
 	var req struct {

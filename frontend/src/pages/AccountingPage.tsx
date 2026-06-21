@@ -259,7 +259,7 @@ function AccountsTab() {
           layout="vertical"
           initialValues={{ type: 'asset', currency: 'VND', is_group: false, sort_order: 0 }}
           onFinish={(values) => {
-            const req: CreateAccountRequest & { opening_balance?: number } = {
+            const req: CreateAccountRequest = {
               name: values.name,
               type: values.type,
               currency: values.currency ?? 'VND',
@@ -268,7 +268,7 @@ function AccountsTab() {
               parent_id: values.parent_id ?? null,
               opening_balance: values.opening_balance ?? undefined,
             }
-            createMutation.mutate(req as CreateAccountRequest)
+            createMutation.mutate(req)
           }}
         >
           <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Required' }]}>

@@ -60,7 +60,10 @@ func (q *NetWorthQuery) Current(ctx context.Context, userID string) (NetWorthRes
 			t := acctType[l.AccountID()]
 			switch {
 			case t == accounting.Income && l.Side() == accounting.Credit:
-				netIncome, _ = netIncome.Add(accounting.Money{Amount: l.Money().Amount, Currency: l.Money().Currency})
+				updated, err := netIncome.Add(accounting.Money{Amount: l.Money().Amount, Currency: l.Money().Currency})
+				if err == nil {
+					netIncome = updated
+				}
 			case t == accounting.Expense && l.Side() == accounting.Debit:
 				netIncome = accounting.Money{Amount: netIncome.Amount.Sub(l.Money().Amount), Currency: netIncome.Currency}
 			}

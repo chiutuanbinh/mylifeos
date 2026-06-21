@@ -190,6 +190,7 @@ export interface CreateAccountRequest {
   is_group: boolean
   sort_order: number
   parent_id: string | null
+  opening_balance?: number
 }
 
 export interface UpdateAccountRequest {
