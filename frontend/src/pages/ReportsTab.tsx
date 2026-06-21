@@ -91,18 +91,39 @@ function computeBalances(
       : ab.credit - ab.debit
   }
 
-  // aggregate group accounts (sum children balances)
-  // do multiple passes until stable (handles nested groups)
-  for (let pass = 0; pass < 10; pass++) {
-    for (const ab of result.values()) {
-      if (!ab.isGroup) continue
-      let d = 0, c = 0
-      for (const child of result.values()) {
-        if (child.parentId === ab.id) { d += child.debit; c += child.credit }
-      }
-      ab.debit = d; ab.credit = c
-      ab.balance = DEBIT_NORMAL.has(ab.type) ? d - c : c - d
+  // aggregate group accounts via topological sort (single pass, handles arbitrary depth)
+  // Build parent→children map for topological ordering
+  const children = new Map<string, string[]>()
+  for (const ab of result.values()) {
+    if (ab.parentId) {
+      const siblings = children.get(ab.parentId) ?? []
+      siblings.push(ab.id)
+      children.set(ab.parentId, siblings)
     }
+  }
+
+  // Topological sort: leaves first, roots last (so we accumulate bottom-up)
+  const sorted: AccountBalance[] = []
+  const visited = new Set<string>()
+  const visit = (id: string) => {
+    if (visited.has(id)) return
+    visited.add(id)
+    for (const childId of children.get(id) ?? []) visit(childId)
+    const ab = result.get(id)
+    if (ab) sorted.push(ab)
+  }
+  for (const ab of result.values()) visit(ab.id)
+
+  // Single bottom-up pass: each group sums its direct children
+  for (const ab of sorted) {
+    if (!ab.isGroup) continue
+    let d = 0, c = 0
+    for (const childId of children.get(ab.id) ?? []) {
+      const child = result.get(childId)
+      if (child) { d += child.debit; c += child.credit }
+    }
+    ab.debit = d; ab.credit = c
+    ab.balance = DEBIT_NORMAL.has(ab.type) ? d - c : c - d
   }
 
   return result
@@ -293,12 +314,12 @@ interface ReportsTabProps {
 }
 
 export function ReportsTab({ accounts, entries }: ReportsTabProps) {
-  const [window, setWindow] = useState<Window>('month')
+  const [timeWindow, setTimeWindow] = useState<Window>('month')
 
   const balances = useMemo(() => {
-    const { from, to } = windowBounds(window)
+    const { from, to } = windowBounds(timeWindow)
     return computeBalances(accounts, entries, from, to)
-  }, [accounts, entries, window])
+  }, [accounts, entries, timeWindow])
 
   const windowOptions = [
     { label: 'Today', value: 'today' },
@@ -313,8 +334,8 @@ export function ReportsTab({ accounts, entries }: ReportsTabProps) {
       <div style={{ marginBottom: 16 }}>
         <Segmented
           options={windowOptions}
-          value={window}
-          onChange={v => setWindow(v as Window)}
+          value={timeWindow}
+          onChange={v => setTimeWindow(v as Window)}
         />
       </div>
       <Tabs
