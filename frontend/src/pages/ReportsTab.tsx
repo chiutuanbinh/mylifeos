@@ -1,8 +1,22 @@
 import { useState, useMemo } from 'react'
-import { Tabs, Segmented, Typography } from 'antd'
+import { Tabs, Segmented, Table, Typography } from 'antd'
 import type { Account, JournalEntry } from '../api/types'
 
 const { Text } = Typography
+
+const fmtVND = (n: number) =>
+  n === 0 ? '—' : `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
+
+function AmtCell({ v, strong }: { v: number; strong?: boolean }) {
+  const neg = v < 0
+  const style = neg ? { color: '#ff4d4f' } : undefined
+  const text = neg ? `-${fmtVND(v)}` : fmtVND(v)
+  return strong ? <Text strong style={style}>{text}</Text> : <Text style={style}>{text}</Text>
+}
+
+function topLevel(balances: Map<string, AccountBalance>, type: string) {
+  return [...balances.values()].filter(b => b.type === type && (!b.parentId || balances.get(b.parentId)?.type !== type))
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────
 
@@ -122,45 +136,34 @@ function computeBalances(
 // ── Sub-components ────────────────────────────────────────────────────────
 
 function TrialBalance({ balances, accounts }: { balances: Map<string, AccountBalance>; accounts: Account[] }) {
-  const leafAccounts = accounts.filter(a => !a.is_group)
-  const fmtVND = (n: number) => `₫${Math.round(n).toLocaleString('vi-VN')}`
-  const totalDr = leafAccounts.reduce((s, a) => s + (balances.get(a.id)?.debit ?? 0), 0)
-  const totalCr = leafAccounts.reduce((s, a) => s + (balances.get(a.id)?.credit ?? 0), 0)
+  const rows = accounts.filter(a => !a.is_group).map(a => balances.get(a.id)!).filter(Boolean)
+  const totalDebit = rows.reduce((s, r) => s + r.debit, 0)
+  const totalCredit = rows.reduce((s, r) => s + r.credit, 0)
+
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-      <thead>
-        <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-          <th style={{ textAlign: 'left', padding: '4px 8px', color: '#999', fontWeight: 500 }}>Account</th>
-          <th style={{ textAlign: 'right', padding: '4px 8px', color: '#999', fontWeight: 500 }}>Debit</th>
-          <th style={{ textAlign: 'right', padding: '4px 8px', color: '#999', fontWeight: 500 }}>Credit</th>
-        </tr>
-      </thead>
-      <tbody>
-        {leafAccounts.map(a => {
-          const b = balances.get(a.id)
-          if (!b || (b.debit === 0 && b.credit === 0)) return null
-          return (
-            <tr key={a.id} style={{ borderBottom: '1px solid #fafafa' }}>
-              <td style={{ padding: '3px 8px' }}>{a.name}</td>
-              <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{b.debit > 0 ? fmtVND(b.debit) : ''}</td>
-              <td style={{ padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{b.credit > 0 ? fmtVND(b.credit) : ''}</td>
-            </tr>
-          )
-        })}
-      </tbody>
-      <tfoot>
-        <tr style={{ borderTop: '2px solid #d9d9d9', fontWeight: 700 }}>
-          <td style={{ padding: '4px 8px' }}>Total</td>
-          <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{fmtVND(totalDr)}</td>
-          <td style={{ padding: '4px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{fmtVND(totalCr)}</td>
-        </tr>
-        <tr>
-          <td colSpan={3} style={{ padding: '2px 8px', fontSize: 11, color: Math.abs(totalDr - totalCr) < 0.01 ? '#52c41a' : '#ff4d4f' }}>
-            {Math.abs(totalDr - totalCr) < 0.01 ? '✓ Balanced' : `⚠ Out of balance by ₫${Math.round(Math.abs(totalDr - totalCr)).toLocaleString('vi-VN')}`}
-          </td>
-        </tr>
-      </tfoot>
-    </table>
+    <Table
+      dataSource={rows}
+      rowKey="id"
+      columns={[
+        { title: 'Account', dataIndex: 'name' },
+        { title: 'Type', dataIndex: 'type', width: 100 },
+        { title: 'Debit',  dataIndex: 'debit',  width: 160, align: 'right' as const, render: (v: number) => <Text>{fmtVND(v)}</Text> },
+        { title: 'Credit', dataIndex: 'credit', width: 160, align: 'right' as const, render: (v: number) => <Text>{fmtVND(v)}</Text> },
+      ]}
+      size="small"
+      pagination={false}
+      summary={() => (
+        <Table.Summary.Row>
+          <Table.Summary.Cell index={0} colSpan={2}><Text strong>Total</Text></Table.Summary.Cell>
+          <Table.Summary.Cell index={2} align="right"><Text strong>{fmtVND(totalDebit)}</Text></Table.Summary.Cell>
+          <Table.Summary.Cell index={3} align="right">
+            <Text strong style={{ color: Math.abs(totalDebit - totalCredit) > 0.01 ? 'red' : undefined }}>
+              {fmtVND(totalCredit)}
+            </Text>
+          </Table.Summary.Cell>
+        </Table.Summary.Row>
+      )}
+    />
   )
 }
 
@@ -168,33 +171,39 @@ function BalanceSection({ title, type, balances, accounts }: {
   title: string; type: string; balances: Map<string, AccountBalance>; accounts: Account[]
 }) {
   const relevant = accounts.filter(a => a.type === type)
-  const fmtVND = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
-  const total = relevant.filter(a => !a.is_group).reduce((s, a) => s + (balances.get(a.id)?.balance ?? 0), 0)
+  const rows = relevant.map(a => balances.get(a.id)!).filter(Boolean)
+  const total = rows.reduce((s, r) => {
+    const parentAb = r.parentId ? balances.get(r.parentId) : undefined
+    if (!parentAb || parentAb.type !== type) return s + r.balance
+    return s
+  }, 0)
 
-  const renderAccount = (a: Account, depth = 0): React.ReactNode => {
-    const b = balances.get(a.id)
-    const children = accounts.filter(c => c.parent_id === a.id && c.type === type)
-    return (
-      <div key={a.id}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 8px', paddingLeft: 8 + depth * 16, fontSize: 12, fontWeight: a.is_group ? 600 : 400, color: a.is_group ? '#222' : '#444' }}>
-          <Text ellipsis style={{ maxWidth: '70%', fontSize: 12 }}>{a.name}</Text>
-          {b && b.balance !== 0 && <span style={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{fmtVND(b.balance)}</span>}
-        </div>
-        {children.map(c => renderAccount(c, depth + 1))}
-      </div>
-    )
-  }
-
-  const rootAccounts = relevant.filter(a => a.parent_id === null || !relevant.find(p => p.id === a.parent_id))
   return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontWeight: 700, fontSize: 13, padding: '4px 8px', background: '#f5f5f5', borderRadius: 4, marginBottom: 4 }}>{title}</div>
-      {rootAccounts.map(a => renderAccount(a))}
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', borderTop: '1px solid #f0f0f0', fontWeight: 600, fontSize: 12 }}>
-        <span>Total {title}</span>
-        <span style={{ fontFamily: 'monospace' }}>{fmtVND(total)}</span>
-      </div>
-    </div>
+    <Table
+      dataSource={rows}
+      rowKey="id"
+      columns={[
+        {
+          title, dataIndex: 'name',
+          render: (name: string, row: AccountBalance) => (
+            <span style={{ paddingLeft: row.isGroup ? 0 : 16, fontWeight: row.isGroup ? 600 : 400 }}>{name}</span>
+          ),
+        },
+        {
+          title: 'Balance', dataIndex: 'balance', width: 180, align: 'right' as const,
+          render: (v: number, row: AccountBalance) => <AmtCell v={v} strong={row.isGroup} />,
+        },
+      ]}
+      size="small"
+      pagination={false}
+      style={{ marginBottom: 16 }}
+      summary={() => (
+        <Table.Summary.Row>
+          <Table.Summary.Cell index={0}><Text strong>Total {title}</Text></Table.Summary.Cell>
+          <Table.Summary.Cell index={1} align="right"><AmtCell v={total} strong /></Table.Summary.Cell>
+        </Table.Summary.Row>
+      )}
+    />
   )
 }
 
@@ -203,11 +212,45 @@ function BalanceSheet({ balances, bsBalances, accounts }: {
   bsBalances: Map<string, AccountBalance>
   accounts: Account[]
 }) {
+  const assetTotal = topLevel(balances, 'asset').reduce((s, b) => s + b.balance, 0)
+  const liabTotal = topLevel(balances, 'liability').reduce((s, b) => s + b.balance, 0)
+  const equityAccountTotal = topLevel(balances, 'equity').reduce((s, b) => s + b.balance, 0)
+
+  // Retained earnings = all-time net income cumulative to period end
+  const allTimeIncome = topLevel(bsBalances, 'income').reduce((s, b) => s + b.balance, 0)
+  const allTimeExpense = topLevel(bsBalances, 'expense').reduce((s, b) => s + b.balance, 0)
+  const retainedEarnings = allTimeIncome - allTimeExpense
+
+  const equityTotal = equityAccountTotal + retainedEarnings
+  const balanced = Math.abs(assetTotal - liabTotal - equityTotal) < 1
+
   return (
     <>
       <BalanceSection title="Assets" type="asset" balances={balances} accounts={accounts} />
       <BalanceSection title="Liabilities" type="liability" balances={balances} accounts={accounts} />
-      <BalanceSection title="Equity" type="equity" balances={bsBalances} accounts={accounts} />
+      <BalanceSection title="Equity" type="equity" balances={balances} accounts={accounts} />
+      <Table
+        dataSource={[{ id: '__retained__', name: 'Retained Earnings', balance: retainedEarnings }]}
+        rowKey="id"
+        columns={[
+          { title: 'Equity', dataIndex: 'name' },
+          { title: 'Balance', dataIndex: 'balance', width: 180, align: 'right' as const, render: (v: number) => <AmtCell v={v} /> },
+        ]}
+        size="small"
+        pagination={false}
+        style={{ marginBottom: 16 }}
+        summary={() => (
+          <Table.Summary.Row>
+            <Table.Summary.Cell index={0}><Text strong>Total Equity</Text></Table.Summary.Cell>
+            <Table.Summary.Cell index={1} align="right"><AmtCell v={equityTotal} strong /></Table.Summary.Cell>
+          </Table.Summary.Row>
+        )}
+      />
+      <div style={{ textAlign: 'right', padding: '8px 0', color: balanced ? '#52c41a' : 'red' }}>
+        {balanced
+          ? `✓ Balanced: Assets ${fmtVND(assetTotal)} = Liabilities + Equity ${fmtVND(liabTotal + equityTotal)}`
+          : `⚠ Unbalanced: Assets ${fmtVND(assetTotal)} ≠ Liabilities + Equity ${fmtVND(liabTotal + equityTotal)}`}
+      </div>
     </>
   )
 }
@@ -216,33 +259,39 @@ function PnLSection({ title, type, balances, accounts }: {
   title: string; type: string; balances: Map<string, AccountBalance>; accounts: Account[]
 }) {
   const relevant = accounts.filter(a => a.type === type)
-  const fmtVND = (n: number) => `₫${Math.round(Math.abs(n)).toLocaleString('vi-VN')}`
-  const total = relevant.filter(a => !a.is_group).reduce((s, a) => s + (balances.get(a.id)?.balance ?? 0), 0)
+  const rows = relevant.map(a => balances.get(a.id)!).filter(Boolean)
+  const total = rows.reduce((s, r) => {
+    const parentAb = r.parentId ? balances.get(r.parentId) : undefined
+    if (!parentAb || parentAb.type !== type) return s + r.balance
+    return s
+  }, 0)
 
-  const renderAccount = (a: Account, depth = 0): React.ReactNode => {
-    const b = balances.get(a.id)
-    const children = accounts.filter(c => c.parent_id === a.id && c.type === type)
-    return (
-      <div key={a.id}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 8px', paddingLeft: 8 + depth * 16, fontSize: 12, fontWeight: a.is_group ? 600 : 400, color: a.is_group ? '#222' : '#444' }}>
-          <Text ellipsis style={{ maxWidth: '70%', fontSize: 12 }}>{a.name}</Text>
-          {b && b.balance !== 0 && <span style={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{fmtVND(b.balance)}</span>}
-        </div>
-        {children.map(c => renderAccount(c, depth + 1))}
-      </div>
-    )
-  }
-
-  const rootAccounts = relevant.filter(a => a.parent_id === null || !relevant.find(p => p.id === a.parent_id))
   return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontWeight: 700, fontSize: 13, padding: '4px 8px', background: '#f5f5f5', borderRadius: 4, marginBottom: 4 }}>{title}</div>
-      {rootAccounts.map(a => renderAccount(a))}
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', borderTop: '1px solid #f0f0f0', fontWeight: 600, fontSize: 12 }}>
-        <span>Total {title}</span>
-        <span style={{ fontFamily: 'monospace' }}>{fmtVND(total)}</span>
-      </div>
-    </div>
+    <Table
+      dataSource={rows}
+      rowKey="id"
+      columns={[
+        {
+          title, dataIndex: 'name',
+          render: (name: string, row: AccountBalance) => (
+            <span style={{ paddingLeft: row.isGroup ? 0 : 16, fontWeight: row.isGroup ? 600 : 400 }}>{name}</span>
+          ),
+        },
+        {
+          title: 'Amount', dataIndex: 'balance', width: 180, align: 'right' as const,
+          render: (v: number, row: AccountBalance) => <AmtCell v={v} strong={row.isGroup} />,
+        },
+      ]}
+      size="small"
+      pagination={false}
+      style={{ marginBottom: 16 }}
+      summary={() => (
+        <Table.Summary.Row>
+          <Table.Summary.Cell index={0}><Text strong>Total {title}</Text></Table.Summary.Cell>
+          <Table.Summary.Cell index={1} align="right"><AmtCell v={total} strong /></Table.Summary.Cell>
+        </Table.Summary.Row>
+      )}
+    />
   )
 }
 
