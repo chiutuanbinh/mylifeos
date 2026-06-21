@@ -94,6 +94,9 @@ func (r *pgJournalRepo) FindByUser(ctx context.Context, userID string, from, to 
 		}
 		goalMap[entryID] = append(goalMap[entryID], goalID)
 	}
+	if err := goalRows.Err(); err != nil {
+		return nil, err
+	}
 	for _, e := range entries {
 		if gids, ok := goalMap[string(e.ID())]; ok {
 			e.SetGoalIDs(gids)
