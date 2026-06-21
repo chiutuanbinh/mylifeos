@@ -9,6 +9,7 @@ import { PlusOutlined, FolderOutlined, FileOutlined, EditOutlined, DeleteOutline
 import type { ColumnsType } from 'antd/es/table'
 import { getAccounts, createAccount, updateAccount, deleteAccount, createJournalEntry, getJournalEntries, getJournalNetWorth } from '../api/endpoints'
 import { ReportsTab } from './ReportsTab'
+import { useTabParam } from '../hooks/useTabParam'
 import type { Account, CreateAccountRequest, UpdateAccountRequest, CreateJournalEntryRequest, JournalEntry } from '../api/types'
 
 function normalSide(type: Account['type']): 'debit' | 'credit' {
@@ -739,10 +740,12 @@ function AssetsTab() {
 export function AccountingPage() {
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: getAccounts })
   const { data: entries = [] } = useQuery({ queryKey: ['journal-entries'], queryFn: getJournalEntries })
+  const [activeTab, setActiveTab] = useTabParam('journal', ['journal', 'accounts', 'assets', 'reports'])
 
   return (
     <Tabs
-      defaultActiveKey="journal"
+      activeKey={activeTab}
+      onChange={setActiveTab}
       items={[
         { key: 'journal', label: 'Journal', children: <JournalTab /> },
         { key: 'accounts', label: 'Accounts', children: <AccountsTab /> },
