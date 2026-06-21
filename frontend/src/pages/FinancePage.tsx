@@ -403,7 +403,7 @@ function SetupWizard({ open, onDone }: { open: boolean; onDone: () => void }) {
       title="Set up your accounts"
       footer={null}
       closable={false}
-      maskClosable={false}
+      mask={{ closable: false }}
     >
       <p style={{ color: '#666', marginBottom: 16 }}>
         We'll create a starter chart of accounts. Uncheck any you don't need.
@@ -663,8 +663,10 @@ function AccountsTab() {
           <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type || prev.is_group !== cur.is_group}>
             {({ getFieldValue }) =>
               getFieldValue('type') === 'asset' && !getFieldValue('is_group') && (
-                <Collapse ghost size="small" style={{ marginBottom: 8 }}>
-                  <Collapse.Panel header="Asset Details (optional)" key="asset">
+                <Collapse ghost size="small" style={{ marginBottom: 8 }} items={[{
+                  key: 'asset',
+                  label: 'Asset Details (optional)',
+                  children: <>
                     <Form.Item name="asset_meta_purchase_value" label="Purchase Value (VND)">
                       <InputNumber min={0} style={{ width: '100%' }} />
                     </Form.Item>
@@ -677,8 +679,8 @@ function AccountsTab() {
                     <Form.Item name="asset_meta_notes" label="Notes">
                       <Input />
                     </Form.Item>
-                  </Collapse.Panel>
-                </Collapse>
+                  </>,
+                }]} />
               )
             }
           </Form.Item>
@@ -740,8 +742,10 @@ function AccountsTab() {
           <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
             {({ getFieldValue }) =>
               getFieldValue('type') === 'asset' && editTarget && !editTarget.is_group && (
-                <Collapse ghost size="small" style={{ marginBottom: 8 }}>
-                  <Collapse.Panel header="Asset Details (optional)" key="asset">
+                <Collapse ghost size="small" style={{ marginBottom: 8 }} items={[{
+                  key: 'asset',
+                  label: 'Asset Details (optional)',
+                  children: <>
                     <Form.Item name="asset_meta_purchase_value" label="Purchase Value (VND)">
                       <InputNumber min={0} style={{ width: '100%' }} />
                     </Form.Item>
@@ -754,8 +758,8 @@ function AccountsTab() {
                     <Form.Item name="asset_meta_notes" label="Notes">
                       <Input />
                     </Form.Item>
-                  </Collapse.Panel>
-                </Collapse>
+                  </>,
+                }]} />
               )
             }
           </Form.Item>
