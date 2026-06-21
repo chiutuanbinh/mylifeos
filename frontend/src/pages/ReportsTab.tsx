@@ -230,10 +230,25 @@ function BalanceSection({ title, type, balances, accounts }: {
   )
 }
 
-function BalanceSheet({ balances, accounts }: { balances: Map<string, AccountBalance>; accounts: Account[] }) {
-  const assetTotal = [...balances.values()].filter(b => b.type === 'asset' && (!b.parentId || balances.get(b.parentId)?.type !== 'asset')).reduce((s, b) => s + b.balance, 0)
-  const liabTotal = [...balances.values()].filter(b => b.type === 'liability' && (!b.parentId || balances.get(b.parentId)?.type !== 'liability')).reduce((s, b) => s + b.balance, 0)
-  const equityTotal = [...balances.values()].filter(b => b.type === 'equity' && (!b.parentId || balances.get(b.parentId)?.type !== 'equity')).reduce((s, b) => s + b.balance, 0)
+function topLevel(balances: Map<string, AccountBalance>, type: string) {
+  return [...balances.values()].filter(b => b.type === type && (!b.parentId || balances.get(b.parentId)?.type !== type))
+}
+
+function BalanceSheet({ balances, bsBalances, accounts }: {
+  balances: Map<string, AccountBalance>
+  bsBalances: Map<string, AccountBalance>
+  accounts: Account[]
+}) {
+  const assetTotal = topLevel(balances, 'asset').reduce((s, b) => s + b.balance, 0)
+  const liabTotal = topLevel(balances, 'liability').reduce((s, b) => s + b.balance, 0)
+  const equityAccountTotal = topLevel(balances, 'equity').reduce((s, b) => s + b.balance, 0)
+
+  // Retained earnings = all-time net income (income/expense cumulative to period end)
+  const allTimeIncome = topLevel(bsBalances, 'income').reduce((s, b) => s + b.balance, 0)
+  const allTimeExpense = topLevel(bsBalances, 'expense').reduce((s, b) => s + b.balance, 0)
+  const retainedEarnings = allTimeIncome - allTimeExpense
+
+  const equityTotal = equityAccountTotal + retainedEarnings
   const balanced = Math.abs(assetTotal - liabTotal - equityTotal) < 1
 
   return (
@@ -241,6 +256,26 @@ function BalanceSheet({ balances, accounts }: { balances: Map<string, AccountBal
       <BalanceSection title="Assets" type="asset" balances={balances} accounts={accounts} />
       <BalanceSection title="Liabilities" type="liability" balances={balances} accounts={accounts} />
       <BalanceSection title="Equity" type="equity" balances={balances} accounts={accounts} />
+      <Table
+        dataSource={[{ id: '__retained__', name: 'Retained Earnings', balance: retainedEarnings }]}
+        rowKey="id"
+        columns={[
+          { title: 'Equity', dataIndex: 'name' },
+          {
+            title: 'Balance', dataIndex: 'balance', width: 180, align: 'right' as const,
+            render: (v: number) => <AmtCell v={v} />,
+          },
+        ]}
+        size="small"
+        pagination={false}
+        style={{ marginBottom: 16 }}
+        summary={() => (
+          <Table.Summary.Row>
+            <Table.Summary.Cell index={0}><Text strong>Total Equity</Text></Table.Summary.Cell>
+            <Table.Summary.Cell index={1} align="right"><AmtCell v={equityTotal} strong /></Table.Summary.Cell>
+          </Table.Summary.Row>
+        )}
+      />
       <div style={{ textAlign: 'right', padding: '8px 0', color: balanced ? '#52c41a' : 'red' }}>
         {balanced
           ? `✓ Balanced: Assets ${fmtVND(assetTotal)} = Liabilities + Equity ${fmtVND(liabTotal + equityTotal)}`
@@ -349,6 +384,12 @@ export function ReportsTab({ accounts, entries, transactions = [] }: ReportsTabP
     return computeBalances(accounts, entries, from, to)
   }, [accounts, entries, timeWindow])
 
+  // All-time income/expense for retained earnings on balance sheet (not period-filtered)
+  const bsBalances = useMemo(() => {
+    const { to } = windowBounds(timeWindow)
+    return computeBalances(accounts, entries, new Date(0), to)
+  }, [accounts, entries, timeWindow])
+
   const windowOptions = [
     { label: 'Today', value: 'today' },
     { label: 'This Month', value: 'month' },
@@ -389,7 +430,7 @@ export function ReportsTab({ accounts, entries, transactions = [] }: ReportsTabP
       <Tabs
         items={[
           { key: 'trial', label: 'Trial Balance', children: <TrialBalance balances={balances} accounts={accounts} /> },
-          { key: 'bs', label: 'Balance Sheet', children: <BalanceSheet balances={balances} accounts={accounts} /> },
+          { key: 'bs', label: 'Balance Sheet', children: <BalanceSheet balances={balances} bsBalances={bsBalances} accounts={accounts} /> },
           { key: 'pl', label: 'P&L', children: <ProfitAndLoss balances={balances} accounts={accounts} /> },
         ]}
       />
