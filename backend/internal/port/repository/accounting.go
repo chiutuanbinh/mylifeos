@@ -13,9 +13,9 @@ var ErrAccountNotFound = errors.New("account not found")
 type AccountRepo interface {
 	Save(ctx context.Context, a *accounting.Account) error
 	FindByUser(ctx context.Context, userID string) ([]*accounting.Account, error)
-	FindByID(ctx context.Context, id accounting.AccountID) (*accounting.Account, error)
+	FindByID(ctx context.Context, id accounting.AccountID, userID string) (*accounting.Account, error)
 	FindByNameAndType(ctx context.Context, userID, name string, t accounting.AccountType) (*accounting.Account, error)
-	Delete(ctx context.Context, id accounting.AccountID) error
+	Delete(ctx context.Context, id accounting.AccountID, userID string) error
 }
 
 type JournalRepo interface {
