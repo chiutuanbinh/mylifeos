@@ -2,7 +2,6 @@ package accountingsvc_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/chiutuanbinh/mylifeos/backend/internal/domain/accounting"
@@ -36,7 +35,7 @@ func (r *fakeAccountRepo) FindByUser(_ context.Context, userID string) ([]*accou
 func (r *fakeAccountRepo) FindByID(_ context.Context, id accounting.AccountID) (*accounting.Account, error) {
 	a, ok := r.accounts[id]
 	if !ok {
-		return nil, errors.New("not found")
+		return nil, repository.ErrAccountNotFound
 	}
 	return a, nil
 }
