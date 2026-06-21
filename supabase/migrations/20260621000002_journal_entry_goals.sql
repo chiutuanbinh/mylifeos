@@ -1,6 +1,6 @@
 CREATE TABLE journal_entry_goals (
-  entry_id TEXT NOT NULL REFERENCES journal_entries(id) ON DELETE CASCADE,
-  goal_id  TEXT NOT NULL REFERENCES goals(id)           ON DELETE CASCADE,
+  entry_id UUID NOT NULL REFERENCES journal_entries(id) ON DELETE CASCADE,
+  goal_id  UUID NOT NULL REFERENCES goals(id)           ON DELETE CASCADE,
   user_id  TEXT NOT NULL,
   PRIMARY KEY (entry_id, goal_id)
 );
